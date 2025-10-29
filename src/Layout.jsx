@@ -1,0 +1,148 @@
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { 
+  LayoutDashboard, 
+  Receipt, 
+  Upload, 
+  BarChart3, 
+  BookOpen,
+  Menu,
+  TrendingUp,
+  X
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+
+const navigationItems = [
+  {
+    title: "Visão Geral",
+    url: createPageUrl("Dashboard"),
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Transações",
+    url: createPageUrl("Transactions"),
+    icon: Receipt,
+  },
+  {
+    title: "Importar Extrato",
+    url: createPageUrl("UploadStatement"),
+    icon: Upload,
+  },
+  {
+    title: "Relatórios",
+    url: createPageUrl("Reports"),
+    icon: BarChart3,
+  },
+  {
+    title: "Conteúdos",
+    url: createPageUrl("Content"),
+    icon: BookOpen,
+  },
+];
+
+export default function Layout({ children, currentPageName }) {
+  const location = useLocation();
+
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
+        <style>{`
+          :root {
+            --primary: 220 70% 50%;
+            --primary-foreground: 0 0% 100%;
+            --success: 142 76% 36%;
+            --success-foreground: 0 0% 100%;
+            --danger: 0 84% 60%;
+            --danger-foreground: 0 0% 100%;
+          }
+        `}</style>
+        
+        <Sidebar className="border-r border-slate-200 bg-white">
+          <SidebarHeader className="border-b border-slate-200 p-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-slate-900 text-lg">CaixaFácil</h2>
+                <p className="text-xs text-slate-500">Gestão Financeira Inteligente</p>
+              </div>
+            </div>
+          </SidebarHeader>
+          
+          <SidebarContent className="p-3">
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">
+                Menu Principal
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {navigationItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton 
+                        asChild 
+                        className={`rounded-xl transition-all duration-200 my-1 ${
+                          location.pathname === item.url 
+                            ? 'bg-blue-50 text-blue-700 font-medium shadow-sm' 
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
+                          <item.icon className="w-5 h-5" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+
+          <SidebarFooter className="border-t border-slate-200 p-4">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+              <p className="text-xs font-semibold text-slate-700 mb-1">💡 Dica Rápida</p>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Importe seus extratos regularmente para manter seu fluxo de caixa sempre atualizado!
+              </p>
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+
+        <main className="flex-1 flex flex-col">
+          {/* Header mobile */}
+          <header className="bg-white border-b border-slate-200 px-6 py-4 md:hidden sticky top-0 z-10">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200" />
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-white" />
+                </div>
+                <h1 className="text-lg font-bold text-slate-900">CaixaFácil</h1>
+              </div>
+            </div>
+          </header>
+
+          {/* Main content */}
+          <div className="flex-1 overflow-auto">
+            {children}
+          </div>
+        </main>
+      </div>
+    </SidebarProvider>
+  );
+}
