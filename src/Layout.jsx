@@ -9,6 +9,7 @@ import {
   BookOpen,
   Building2,
   TrendingUp,
+  Brain,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,10 +38,16 @@ const navigationItems = [
     icon: Receipt,
   },
   {
+    title: "Assistente IA",
+    url: createPageUrl("AIAssistant"),
+    icon: Brain,
+    badge: "IA",
+    badgeColor: "bg-purple-600"
+  },
+  {
     title: "Conexões Bancárias",
     url: createPageUrl("BankConnections"),
     icon: Building2,
-    badge: "Novo"
   },
   {
     title: "Importar Extrato",
@@ -110,7 +117,7 @@ export default function Layout({ children, currentPageName }) {
                           <item.icon className="w-5 h-5" />
                           <span>{item.title}</span>
                           {item.badge && (
-                            <span className="ml-auto text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                            <span className={`ml-auto text-xs ${item.badgeColor || 'bg-blue-600'} text-white px-2 py-0.5 rounded-full`}>
                               {item.badge}
                             </span>
                           )}
@@ -124,10 +131,13 @@ export default function Layout({ children, currentPageName }) {
           </SidebarContent>
 
           <SidebarFooter className="border-t border-slate-200 p-4">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
-              <p className="text-xs font-semibold text-slate-700 mb-1">💡 Dica Rápida</p>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Conecte seus bancos para sincronização automática ou importe extratos manualmente!
+            <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="w-4 h-4 text-purple-600" />
+                <p className="text-xs font-semibold text-purple-900">Assistente IA</p>
+              </div>
+              <p className="text-xs text-purple-700 leading-relaxed">
+                Pergunte qualquer coisa sobre suas finanças e receba conselhos personalizados!
               </p>
             </div>
           </SidebarFooter>
