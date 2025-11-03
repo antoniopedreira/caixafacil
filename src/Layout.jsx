@@ -7,9 +7,8 @@ import {
   Upload, 
   BarChart3, 
   BookOpen,
-  Menu,
+  Building2,
   TrendingUp,
-  X
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +35,12 @@ const navigationItems = [
     title: "Transações",
     url: createPageUrl("Transactions"),
     icon: Receipt,
+  },
+  {
+    title: "Conexões Bancárias",
+    url: createPageUrl("BankConnections"),
+    icon: Building2,
+    badge: "Novo"
   },
   {
     title: "Importar Extrato",
@@ -104,6 +109,11 @@ export default function Layout({ children, currentPageName }) {
                         <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
                           <item.icon className="w-5 h-5" />
                           <span>{item.title}</span>
+                          {item.badge && (
+                            <span className="ml-auto text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                              {item.badge}
+                            </span>
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -117,7 +127,7 @@ export default function Layout({ children, currentPageName }) {
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
               <p className="text-xs font-semibold text-slate-700 mb-1">💡 Dica Rápida</p>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Importe seus extratos regularmente para manter seu fluxo de caixa sempre atualizado!
+                Conecte seus bancos para sincronização automática ou importe extratos manualmente!
               </p>
             </div>
           </SidebarFooter>
