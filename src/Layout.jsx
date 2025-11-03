@@ -10,6 +10,7 @@ import {
   Building2,
   TrendingUp,
   Brain,
+  Repeat,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +37,11 @@ const navigationItems = [
     title: "Transações",
     url: createPageUrl("Transactions"),
     icon: Receipt,
+  },
+  {
+    title: "Despesas Recorrentes",
+    url: createPageUrl("RecurringExpenses"),
+    icon: Repeat,
   },
   {
     title: "Assistente IA",
@@ -131,13 +137,13 @@ export default function Layout({ children, currentPageName }) {
           </SidebarContent>
 
           <SidebarFooter className="border-t border-slate-200 p-4">
-            <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+            <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
               <div className="flex items-center gap-2 mb-2">
-                <Brain className="w-4 h-4 text-purple-600" />
-                <p className="text-xs font-semibold text-purple-900">Assistente IA</p>
+                <Repeat className="w-4 h-4 text-orange-600" />
+                <p className="text-xs font-semibold text-orange-900">Lembretes Automáticos</p>
               </div>
-              <p className="text-xs text-purple-700 leading-relaxed">
-                Pergunte qualquer coisa sobre suas finanças e receba conselhos personalizados!
+              <p className="text-xs text-orange-700 leading-relaxed">
+                Configure suas despesas recorrentes e receba lembretes por email!
               </p>
             </div>
           </SidebarFooter>

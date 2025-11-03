@@ -5,6 +5,7 @@ import Reports from './pages/Reports';
 import Content from './pages/Content';
 import BankConnections from './pages/BankConnections';
 import AIAssistant from './pages/AIAssistant';
+import RecurringExpenses from './pages/RecurringExpenses';
 import Layout from './Layout.jsx';
 
 
@@ -16,6 +17,7 @@ export const PAGES = {
     "Content": Content,
     "BankConnections": BankConnections,
     "AIAssistant": AIAssistant,
+    "RecurringExpenses": RecurringExpenses,
 }
 
 export const pagesConfig = {
