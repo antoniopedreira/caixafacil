@@ -24,23 +24,23 @@ export default function StatCard({ title, value, icon: Icon, trend, trendValue, 
   return (
     <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
       <div className={`absolute inset-0 bg-gradient-to-br ${bgColors[type]} opacity-5`} />
-      <div className="relative p-6">
-        <div className="flex justify-between items-start mb-4">
-          <div className={`p-3 rounded-xl ${iconBgColors[type]}`}>
-            <Icon className={`w-6 h-6 ${iconColors[type]}`} />
+      <div className="relative p-5">
+        <div className="flex justify-between items-start mb-3">
+          <div className={`p-2.5 rounded-lg ${iconBgColors[type]}`}>
+            <Icon className={`w-5 h-5 ${iconColors[type]}`} />
           </div>
-          {trend && (
-            <div className={`flex items-center gap-1 text-sm font-medium ${
-              trend === 'up' ? 'text-emerald-600' : 'text-rose-600'
-            }`}>
-              {trend === 'up' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-              {trendValue}
-            </div>
-          )}
         </div>
         <div>
-          <p className="text-sm font-medium text-slate-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-slate-900">{value}</p>
+          <p className="text-xs font-medium text-slate-600 mb-2">{title}</p>
+          <p className="text-2xl font-bold text-slate-900 mb-2">{value}</p>
+          {trend && (
+            <div className={`flex items-center gap-1 text-xs font-medium ${
+              trend === 'up' ? 'text-emerald-600' : 'text-rose-600'
+            }`}>
+              {trend === 'up' ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+              {trendValue} vs mês anterior
+            </div>
+          )}
         </div>
       </div>
     </Card>

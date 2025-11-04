@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingUp, TrendingDown, Wallet, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, subMonths } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import StatCard from "../components/dashboard/StatCard";
@@ -12,25 +13,47 @@ import CashFlowChart from "../components/dashboard/CashFlowChart";
 import CategoryChart from "../components/dashboard/CategoryChart";
 
 export default function Dashboard() {
+  const [selectedMonth, setSelectedMonth] = useState("0"); // 0 = mês atual
+
   const { data: transactions, isLoading } = useQuery({
     queryKey: ['transactions'],
     queryFn: () => base44.entities.Transaction.list('-date'),
     initialData: [],
   });
 
-  // Calcular estatísticas
+  // Gera lista dos últimos 12 meses
+  const monthOptions = React.useMemo(() => {
+    const options = [];
+    for (let i = 0; i < 12; i++) {
+      const date = subMonths(new Date(), i);
+      options.push({
+        value: i.toString(),
+        label: format(date, "MMMM 'de' yyyy", { locale: ptBR }),
+        date: date
+      });
+    }
+    return options;
+  }, []);
+
+  // Calcular estatísticas do mês selecionado
   const stats = React.useMemo(() => {
-    const now = new Date();
-    const lastMonth = subMonths(now, 1);
+    const monthsBack = parseInt(selectedMonth);
+    const selectedDate = subMonths(new Date(), monthsBack);
+    const previousDate = subMonths(selectedDate, 1);
     
-    const currentMonthTransactions = transactions.filter(t => 
-      new Date(t.date) >= new Date(now.getFullYear(), now.getMonth(), 1)
-    );
+    const selectedMonthStart = startOfMonth(selectedDate);
+    const selectedMonthEnd = endOfMonth(selectedDate);
+    const previousMonthStart = startOfMonth(previousDate);
+    const previousMonthEnd = endOfMonth(previousDate);
+    
+    const currentMonthTransactions = transactions.filter(t => {
+      const date = new Date(t.date);
+      return date >= selectedMonthStart && date <= selectedMonthEnd;
+    });
     
     const lastMonthTransactions = transactions.filter(t => {
       const date = new Date(t.date);
-      return date >= new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1) &&
-             date < new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= previousMonthStart && date <= previousMonthEnd;
     });
     
     const totalIncome = currentMonthTransactions
@@ -50,6 +73,7 @@ export default function Dashboard() {
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
     
     const balance = totalIncome - totalExpense;
+    const lastMonthBalance = lastMonthIncome - lastMonthExpense;
     
     const incomeTrend = lastMonthIncome > 0 
       ? ((totalIncome - lastMonthIncome) / lastMonthIncome * 100).toFixed(1)
@@ -59,16 +83,22 @@ export default function Dashboard() {
       ? ((totalExpense - lastMonthExpense) / lastMonthExpense * 100).toFixed(1)
       : 0;
     
+    const balanceTrend = lastMonthBalance !== 0
+      ? ((balance - lastMonthBalance) / Math.abs(lastMonthBalance) * 100).toFixed(1)
+      : 0;
+    
     return {
       totalIncome,
       totalExpense,
       balance,
       incomeTrend: Math.abs(incomeTrend),
       expenseTrend: Math.abs(expenseTrend),
+      balanceTrend: Math.abs(balanceTrend),
       incomeTrendDirection: incomeTrend >= 0 ? 'up' : 'down',
-      expenseTrendDirection: expenseTrend >= 0 ? 'up' : 'down'
+      expenseTrendDirection: expenseTrend >= 0 ? 'up' : 'down',
+      balanceTrendDirection: balanceTrend >= 0 ? 'up' : 'down'
     };
-  }, [transactions]);
+  }, [transactions, selectedMonth]);
 
   if (isLoading) {
     return (
@@ -83,16 +113,33 @@ export default function Dashboard() {
     );
   }
 
+  const selectedMonthLabel = monthOptions.find(m => m.value === selectedMonth)?.label || '';
+
   return (
     <div className="p-6 md:p-8 space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">
-          Visão Geral do Fluxo de Caixa
-        </h1>
-        <p className="text-slate-600">
-          {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
-        </p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            Visão Geral do Fluxo de Caixa
+          </h1>
+          <p className="text-slate-600">
+            Acompanhe suas finanças em tempo real
+          </p>
+        </div>
+
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Selecione o mês" />
+          </SelectTrigger>
+          <SelectContent>
+            {monthOptions.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Alert se não houver transações */}
@@ -106,7 +153,15 @@ export default function Dashboard() {
       )}
 
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          title="Saldo do Mês"
+          value={`R$ ${stats.balance.toFixed(2)}`}
+          icon={Wallet}
+          type={stats.balance >= 0 ? 'income' : 'expense'}
+          trend={stats.balanceTrendDirection}
+          trendValue={`${stats.balanceTrend}%`}
+        />
         <StatCard
           title="Receitas do Mês"
           value={`R$ ${stats.totalIncome.toFixed(2)}`}
@@ -122,12 +177,6 @@ export default function Dashboard() {
           type="expense"
           trend={stats.expenseTrendDirection}
           trendValue={`${stats.expenseTrend}%`}
-        />
-        <StatCard
-          title="Saldo do Mês"
-          value={`R$ ${stats.balance.toFixed(2)}`}
-          icon={Wallet}
-          type={stats.balance >= 0 ? 'income' : 'expense'}
         />
       </div>
 
