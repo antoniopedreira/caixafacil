@@ -1,3 +1,4 @@
+
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,13 +42,15 @@ export default function BankConnections() {
       queryClient.invalidateQueries({ queryKey: ['bank-connections'] });
       
       // Sincroniza automaticamente após conectar
-      await syncConnection(connection.id);
+      setTimeout(() => {
+        syncConnection(connection.id);
+      }, 1000);
     },
   });
 
   const syncMutation = useMutation({
     mutationFn: async (connectionId) => {
-      const response = await fetch('/api/functions/pluggy/syncBankTransactions', {
+      const response = await fetch('/api/backend-functions/syncPluggyTransactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,15 +58,27 @@ export default function BankConnections() {
         body: JSON.stringify({ connectionId }),
       });
 
-      if (!response.ok) {
-        throw new Error('Erro ao sincronizar');
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Erro ao sincronizar');
       }
 
-      return await response.json();
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bank-connections'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      
+      // Mostra mensagem de sucesso
+      if (data.imported > 0) {
+        alert(`✅ ${data.imported} transações importadas com sucesso!`);
+      } else {
+        alert('✅ Sincronização concluída. Nenhuma transação nova encontrada.');
+      }
+    },
+    onError: (error) => {
+      alert(`❌ Erro: ${error.message}`);
     },
   });
 
@@ -71,14 +86,25 @@ export default function BankConnections() {
     mutationFn: async (connectionId) => {
       const connection = connections.find(c => c.id === connectionId);
       
+      if (!connection) {
+        throw new Error('Conexão não encontrada');
+      }
+      
       // Deleta no Pluggy
-      await fetch('/api/functions/pluggy/deleteItem', {
+      const response = await fetch('/api/backend-functions/deletePluggyItem', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ itemId: connection.pluggy_item_id }),
       });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.warn('Erro ao deletar no Pluggy:', data.error);
+        // Continua mesmo assim para deletar localmente
+      }
 
       // Deleta localmente
       await base44.entities.BankConnection.delete(connectionId);
@@ -89,7 +115,11 @@ export default function BankConnections() {
   });
 
   const syncConnection = async (connectionId) => {
-    await syncMutation.mutateAsync(connectionId);
+    try {
+      await syncMutation.mutateAsync(connectionId);
+    } catch (error) {
+      console.error('Erro na sincronização:', error);
+    }
   };
 
   if (isLoading) {
@@ -162,19 +192,24 @@ export default function BankConnections() {
       </div>
 
       {/* Instruções de configuração */}
-      {connections.length === 0 && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <AlertCircle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-900">
-            <strong>Importante:</strong> Para usar esta funcionalidade, você precisa:
-            <ol className="list-decimal list-inside mt-2 space-y-1">
-              <li>Criar uma conta gratuita em <a href="https://dashboard.pluggy.ai" target="_blank" rel="noopener noreferrer" className="underline font-semibold">dashboard.pluggy.ai</a></li>
-              <li>Obter suas credenciais (Client ID e Client Secret)</li>
-              <li>Configurar os secrets no Dashboard → Settings → Secrets</li>
-            </ol>
-          </AlertDescription>
-        </Alert>
-      )}
+      <Alert className="border-orange-200 bg-orange-50">
+        <AlertCircle className="h-4 w-4 text-orange-600" />
+        <AlertDescription className="text-orange-900">
+          <strong>Passo a passo para ativar:</strong>
+          <ol className="list-decimal list-inside mt-2 space-y-1">
+            <li>Crie uma conta gratuita em <a href="https://dashboard.pluggy.ai/signup" target="_blank" rel="noopener noreferrer" className="underline font-semibold">dashboard.pluggy.ai</a></li>
+            <li>Acesse "API Keys" e copie seu <strong>Client ID</strong> e <strong>Client Secret</strong></li>
+            <li>No CaixaFácil, vá em <strong>Dashboard → Settings → Secrets</strong></li>
+            <li>Adicione os secrets:
+              <ul className="list-disc list-inside ml-4 mt-1">
+                <li><code className="bg-orange-100 px-1 rounded">PLUGGY_CLIENT_ID</code> = seu Client ID</li>
+                <li><code className="bg-orange-100 px-1 rounded">PLUGGY_CLIENT_SECRET</code> = seu Client Secret</li>
+              </ul>
+            </li>
+            <li>Volte aqui e clique em "Conectar Banco" 🎉</li>
+          </ol>
+        </AlertDescription>
+      </Alert>
 
       {/* Lista de conexões */}
       {connections.length > 0 && (

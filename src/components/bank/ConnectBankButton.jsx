@@ -12,47 +12,53 @@ export default function ConnectBankButton({ onSuccess }) {
     setError(null);
 
     try {
-      // Solicita token de acesso para o Widget
-      const response = await fetch('/api/functions/pluggy/createConnectToken', {
+      // Solicita token de acesso do backend
+      const response = await fetch('/api/backend-functions/createPluggyConnectToken', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Erro ao iniciar conexão');
-      }
+      const data = await response.json();
 
-      const { accessToken } = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Erro ao criar token de conexão');
+      }
 
       // Carrega o Widget do Pluggy
       if (!window.PluggyConnect) {
         const script = document.createElement('script');
-        script.src = 'https://cdn.pluggy.ai/pluggy-connect/v2/pluggy-connect.js';
+        script.src = 'https://cdn.pluggy.ai/pluggy-connect/v3/pluggy-connect.js';
         script.async = true;
         document.body.appendChild(script);
 
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           script.onload = resolve;
+          script.onerror = reject;
         });
       }
 
       // Inicializa o Widget
       const pluggyConnect = new window.PluggyConnect({
-        connectToken: accessToken,
-        includeSandbox: true, // Habilitar para testes
+        connectToken: data.accessToken,
+        includeSandbox: false, // Coloque true apenas para testes
         onSuccess: async (itemData) => {
-          console.log('Conexão criada:', itemData);
+          console.log('Banco conectado:', itemData);
           
-          // Salva a conexão no banco
           if (onSuccess) {
             await onSuccess(itemData);
           }
+          
+          setLoading(false);
         },
         onError: (error) => {
           console.error('Erro no widget:', error);
           setError('Erro ao conectar banco. Tente novamente.');
+          setLoading(false);
+        },
+        onClose: () => {
+          setLoading(false);
         },
       });
 
@@ -60,7 +66,6 @@ export default function ConnectBankButton({ onSuccess }) {
     } catch (err) {
       console.error('Erro:', err);
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
