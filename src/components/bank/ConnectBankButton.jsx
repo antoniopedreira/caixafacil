@@ -36,7 +36,7 @@ export default function ConnectBankButton({ onSuccess }) {
       // Inicializa o Widget
       const pluggyConnect = new window.PluggyConnect({
         connectToken: response.data.accessToken,
-        includeSandbox: true, // Coloque true para testes
+        includeSandbox: true,
         onSuccess: async (itemData) => {
           console.log('Banco conectado:', itemData);
           
@@ -59,9 +59,9 @@ export default function ConnectBankButton({ onSuccess }) {
       pluggyConnect.init();
     } catch (err) {
       console.error('Erro completo:', err);
-      let errorMessage = err.message;
+      let errorMessage = err?.message || 'Erro desconhecido ao conectar banco';
       
-      if (errorMessage.includes('configuradas')) {
+      if (errorMessage && errorMessage.includes('configuradas')) {
         errorMessage = 'Credenciais do Pluggy não configuradas. Configure PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET nas variáveis de ambiente.';
       }
       
