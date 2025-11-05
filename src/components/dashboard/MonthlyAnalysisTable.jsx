@@ -1,7 +1,9 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronRight, Calendar, Info } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, isSameMonth, max } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,18 +33,20 @@ const CATEGORY_NAMES = {
   outras_despesas: "Outras Despesas"
 };
 
-// Formata valor SEM decimais e mais compacto
-const formatCurrency = (value) => {
-  if (value >= 1000000) {
-    return (value / 1000000).toFixed(1) + 'M';
+// Funções de formatação baseadas no modo selecionado
+const formatCurrency = (value, displayMode) => {
+  if (displayMode === 'k') {
+    // Mil: sempre em k com 1 decimal
+    return (value / 1000).toFixed(1).replace('.', ',') + 'k';
+  } else if (displayMode === 'M') {
+    // Milhão: sempre em M com 1 decimal
+    return (value / 1000000).toFixed(1).replace('.', ',') + 'M';
   }
-  if (value >= 1000) {
-    return (value / 1000).toFixed(0) + 'k';
-  }
-  return Math.round(value).toString();
+  // Normal: valor inteiro sem decimais
+  return Math.round(value).toLocaleString('pt-BR');
 };
 
-// Formata valor completo sem decimais
+// Formata valor completo sem decimais (para análise e modal)
 const formatCurrencyFull = (value) => {
   return new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: 0,
@@ -79,6 +83,7 @@ const generateAnalysis = (data) => {
 
 export default function MonthlyAnalysisTable({ transactions }) {
   const [showMonths, setShowMonths] = useState(6);
+  const [displayMode, setDisplayMode] = useState('normal'); // 'normal', 'k', 'M'
   const [expandedRow, setExpandedRow] = useState(null);
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -180,27 +185,53 @@ export default function MonthlyAnalysisTable({ transactions }) {
     setExpandedCategory(expandedCategory === category ? null : category);
   };
 
+  // Define largura das colunas baseado no modo de visualização
+  const getColumnWidth = () => {
+    if (displayMode === 'normal') return 'w-24'; // 96px - cabe 3 meses
+    if (displayMode === 'k') return 'w-20'; // 80px - mais compacto
+    if (displayMode === 'M') return 'w-20'; // 80px - mais compacto
+    return 'w-24';
+  };
+
   return (
     <div className="space-y-6">
       <Card className="border-0 shadow-md">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <CardTitle className="text-lg">Análise Mensal Comparativa</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={showMonths === 6 ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowMonths(6)}
-              >
-                6 meses
-              </Button>
-              <Button
-                variant={showMonths === 12 ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowMonths(12)}
-              >
-                12 meses
-              </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Filtro de Visualização */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-700">Visualização:</span>
+                <Select value={displayMode} onValueChange={setDisplayMode}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="k">Em mil (k)</SelectItem>
+                    <SelectItem value="M">Em milhão (M)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtro de Meses */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={showMonths === 6 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowMonths(6)}
+                >
+                  6 meses
+                </Button>
+                <Button
+                  variant={showMonths === 12 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowMonths(12)}
+                >
+                  12 meses
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -223,7 +254,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                     
                   </th>
                   {monthsData.map((month, index) => (
-                    <th key={index} className="p-1 text-center w-20">
+                    <th key={index} className={`p-1 text-center ${getColumnWidth()}`}>
                       <div className={`${
                         month.isCurrentMonth 
                           ? 'bg-blue-100 text-blue-900 font-bold rounded p-1' 
@@ -261,7 +292,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   {monthsData.map((month, index) => (
                     <td key={index} className="p-1 text-center">
                       <div className="font-bold text-emerald-600 text-xs whitespace-nowrap">
-                        R$ {formatCurrency(month.income)}
+                        R$ {formatCurrency(month.income, displayMode)}
                       </div>
                     </td>
                   ))}
@@ -290,7 +321,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         <td key={idx} className="p-1 text-center bg-emerald-50/50">
                           {month.incomeByCategory[category] ? (
                             <span className="text-[10px] font-semibold text-emerald-700 whitespace-nowrap">
-                              R$ {formatCurrency(month.incomeByCategory[category].total)}
+                              R$ {formatCurrency(month.incomeByCategory[category].total, displayMode)}
                             </span>
                           ) : (
                             <span className="text-[10px] text-slate-300">-</span>
@@ -325,7 +356,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                               <td key={idx} className="p-1 text-center bg-white">
                                 {idx === monthIdx && (
                                   <span className="text-[9px] font-semibold text-emerald-600 whitespace-nowrap">
-                                    R$ {formatCurrency(Math.abs(transaction.amount))}
+                                    R$ {formatCurrency(Math.abs(transaction.amount), displayMode)}
                                   </span>
                                 )}
                               </td>
@@ -356,7 +387,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   {monthsData.map((month, index) => (
                     <td key={index} className="p-1 text-center">
                       <div className="font-bold text-rose-600 text-xs whitespace-nowrap">
-                        R$ {formatCurrency(month.expense)}
+                        R$ {formatCurrency(month.expense, displayMode)}
                       </div>
                     </td>
                   ))}
@@ -385,7 +416,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         <td key={idx} className="p-1 text-center bg-rose-50/50">
                           {month.expenseByCategory[category] ? (
                             <span className="text-[10px] font-semibold text-rose-700 whitespace-nowrap">
-                              R$ {formatCurrency(month.expenseByCategory[category].total)}
+                              R$ {formatCurrency(month.expenseByCategory[category].total, displayMode)}
                             </span>
                           ) : (
                             <span className="text-[10px] text-slate-300">-</span>
@@ -420,7 +451,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                               <td key={idx} className="p-1 text-center bg-white">
                                 {idx === monthIdx && (
                                   <span className="text-[9px] font-semibold text-rose-600 whitespace-nowrap">
-                                    R$ {formatCurrency(Math.abs(transaction.amount))}
+                                    R$ {formatCurrency(Math.abs(transaction.amount), displayMode)}
                                   </span>
                                 )}
                               </td>
@@ -441,7 +472,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                       <div className={`font-bold text-xs whitespace-nowrap ${
                         month.balance >= 0 ? 'text-blue-600' : 'text-rose-600'
                       }`}>
-                        R$ {formatCurrency(month.balance)}
+                        R$ {formatCurrency(month.balance, displayMode)}
                       </div>
                     </td>
                   ))}
