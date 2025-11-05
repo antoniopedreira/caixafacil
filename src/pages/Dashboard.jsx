@@ -1,11 +1,11 @@
-
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Calendar } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle, Calendar, TrendingUp, BarChart3 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -14,6 +14,9 @@ import MonthSummaryCards from "../components/dashboard/MonthSummaryCards";
 import UpcomingExpenses from "../components/dashboard/UpcomingExpenses";
 import RecentTransactions from "../components/dashboard/RecentTransactions";
 import ExpandedTransactionList from "../components/dashboard/ExpandedTransactionList";
+import SpendingTrends from "../components/dashboard/SpendingTrends";
+import TopCategories from "../components/dashboard/TopCategories";
+import FinancialProjection from "../components/dashboard/FinancialProjection";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
@@ -131,63 +134,112 @@ export default function Dashboard() {
         onToggleBalance={() => setShowBalance(!showBalance)}
       />
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <Calendar className="w-5 h-5" />
-          Resumo do Mês
-        </h2>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-64">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {monthOptions.map(option => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="overview" className="gap-2">
+            <Calendar className="w-4 h-4" />
+            Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="analysis" className="gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Análise Avançada
+          </TabsTrigger>
+        </TabsList>
 
-      <MonthSummaryCards
-        income={monthStats.income}
-        expense={monthStats.expense}
-        balance={monthStats.balance}
-        onClickIncome={() => handleToggleCard('income')}
-        onClickExpense={() => handleToggleCard('expense')}
-        expandedCard={expandedCard}
-      >
-        {{
-          income: incomeTransactions.length > 0 && (
-            <ExpandedTransactionList
-              transactions={incomeTransactions}
-              type="income"
-              onClose={() => setExpandedCard(null)} // Re-added onClose based on common practice for expanded lists.
-            />
-          ),
-          expense: expenseTransactions.length > 0 && (
-            <ExpandedTransactionList
-              transactions={expenseTransactions}
-              type="expense"
-              onClose={() => setExpandedCard(null)} // Re-added onClose based on common practice for expanded lists.
-            />
-          )
-        }}
-      </MonthSummaryCards>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Resumo do Mês
+            </h2>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {transactions.length === 0 && (
-        <Alert className="border-blue-200 bg-blue-50">
-          <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-900">
-            <strong>Comece agora!</strong> Importe um extrato bancário ou adicione transações manualmente para visualizar seus dados.
-          </AlertDescription>
-        </Alert>
-      )}
+          <MonthSummaryCards
+            income={monthStats.income}
+            expense={monthStats.expense}
+            balance={monthStats.balance}
+            onClickIncome={() => handleToggleCard('income')}
+            onClickExpense={() => handleToggleCard('expense')}
+            expandedCard={expandedCard}
+          >
+            {{
+              income: incomeTransactions.length > 0 && (
+                <ExpandedTransactionList
+                  transactions={incomeTransactions}
+                  type="income"
+                  onClose={() => setExpandedCard(null)}
+                />
+              ),
+              expense: expenseTransactions.length > 0 && (
+                <ExpandedTransactionList
+                  transactions={expenseTransactions}
+                  type="expense"
+                  onClose={() => setExpandedCard(null)}
+                />
+              )
+            }}
+          </MonthSummaryCards>
 
-      <UpcomingExpenses recurringExpenses={recurringExpenses} />
+          {transactions.length === 0 && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-900">
+                <strong>Comece agora!</strong> Importe um extrato bancário ou adicione transações manualmente para visualizar seus dados.
+              </AlertDescription>
+            </Alert>
+          )}
 
-      <RecentTransactions transactions={transactions} />
+          <UpcomingExpenses recurringExpenses={recurringExpenses} />
+
+          <RecentTransactions transactions={transactions} />
+        </TabsContent>
+
+        <TabsContent value="analysis" className="space-y-6">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-6 h-6 text-blue-600" />
+            <h2 className="text-2xl font-bold text-slate-900">Análise Avançada</h2>
+          </div>
+          
+          {transactions.length === 0 ? (
+            <Alert className="border-orange-200 bg-orange-50">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-900">
+                <strong>Adicione transações</strong> para visualizar análises e projeções financeiras avançadas.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {/* Tendências de gastos */}
+              <SpendingTrends transactions={transactions} />
+
+              {/* Top categorias */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TopCategories transactions={filteredTransactions} type="expense" />
+                <TopCategories transactions={filteredTransactions} type="income" />
+              </div>
+
+              {/* Projeção financeira */}
+              <FinancialProjection
+                currentBalance={totalBalance}
+                transactions={transactions}
+                recurringExpenses={recurringExpenses}
+              />
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
