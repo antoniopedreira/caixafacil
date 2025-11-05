@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -72,44 +73,55 @@ export default function Transactions() {
     initialData: [],
   });
 
-  // Identifica a última importação
+  // Identifica a última importação de forma mais simples
   const lastImport = React.useMemo(() => {
+    // Filtra todas as transações importadas (que têm "Importado" nas notas)
     const importedTransactions = transactions.filter(t => 
-      t.notes?.includes('Importado do extrato CSV em') ||
-      t.notes?.includes('Importado em')
+      t.notes && (
+        t.notes.includes('Importado do extrato CSV em') ||
+        t.notes.includes('Importado em') ||
+        t.notes.includes('Importado via Pluggy')
+      )
     );
     
     if (importedTransactions.length === 0) return null;
     
-    // Agrupa por data de importação (extraída da nota)
+    // Agrupa por texto exato da nota
     const groups = {};
     importedTransactions.forEach(t => {
-      const match = t.notes?.match(/Importado (?:do extrato CSV )?em (\d{2}\/\d{2}\/\d{4})/);
-      if (match) {
-        const importDate = match[1];
-        if (!groups[importDate]) {
-          groups[importDate] = [];
-        }
-        groups[importDate].push(t);
+      const noteKey = t.notes;
+      if (!groups[noteKey]) {
+        groups[noteKey] = {
+          note: noteKey,
+          transactions: [],
+          created_date: t.created_date
+        };
       }
+      groups[noteKey].transactions.push(t);
     });
     
-    // Pega a importação mais recente
-    const dates = Object.keys(groups).sort((a, b) => {
-      const [dayA, monthA, yearA] = a.split('/');
-      const [dayB, monthB, yearB] = b.split('/');
-      const dateA = new Date(yearA, monthA - 1, dayA);
-      const dateB = new Date(yearB, monthB - 1, dayB);
-      return dateB - dateA;
+    // Ordena grupos pela data de criação mais recente
+    const sortedGroups = Object.values(groups).sort((a, b) => {
+      // created_date is a string, convert to Date objects for comparison
+      return new Date(b.created_date).getTime() - new Date(a.created_date).getTime();
     });
     
-    if (dates.length === 0) return null;
+    if (sortedGroups.length === 0) return null;
     
-    const latestDate = dates[0];
+    const latestGroup = sortedGroups[0];
+    
+    // Extrai data de forma mais flexível
+    let displayDate = 'data desconhecida';
+    const dateMatch = latestGroup.note.match(/(\d{2}\/\d{2}\/\d{4})/);
+    if (dateMatch) {
+      displayDate = dateMatch[1];
+    }
+    
     return {
-      date: latestDate,
-      count: groups[latestDate].length,
-      transactions: groups[latestDate]
+      note: latestGroup.note,
+      date: displayDate,
+      count: latestGroup.transactions.length,
+      transactions: latestGroup.transactions
     };
   }, [transactions]);
 
@@ -140,15 +152,28 @@ export default function Transactions() {
 
   const undoImportMutation = useMutation({
     mutationFn: async (transactionIds) => {
-      // Deleta todas as transações em paralelo
-      await Promise.all(
-        transactionIds.map(id => base44.entities.Transaction.delete(id))
-      );
+      console.log('Deletando transações:', transactionIds);
+      
+      // Deleta uma por uma para garantir que todas sejam deletadas
+      for (const id of transactionIds) {
+        try {
+          await base44.entities.Transaction.delete(id);
+          console.log('Deletada:', id);
+        } catch (error) {
+          console.error('Erro ao deletar transação:', id, error);
+          // Decide whether to throw or continue. For undo, it's probably better to try to delete all.
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       setUndoDialogOpen(false);
+      alert('✅ Importação desfeita com sucesso!');
     },
+    onError: (error) => {
+      console.error('Erro ao desfazer importação:', error);
+      alert('❌ Erro ao desfazer importação. Tente novamente.');
+    }
   });
 
   const handleSubmit = (e) => {
@@ -163,6 +188,7 @@ export default function Transactions() {
   const handleUndoImport = () => {
     if (lastImport) {
       const ids = lastImport.transactions.map(t => t.id);
+      console.log('IDs para deletar:', ids);
       undoImportMutation.mutate(ids);
     }
   };
@@ -203,7 +229,7 @@ export default function Transactions() {
           <p className="text-slate-600">Gerencie todas as movimentações financeiras</p>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           {lastImport && (
             <Button 
               variant="outline" 
@@ -342,6 +368,10 @@ export default function Transactions() {
           <AlertDescription className="text-orange-900">
             <strong>Última importação:</strong> {lastImport.count} transações importadas em {lastImport.date}. 
             Use o botão "Desfazer" acima se esta importação estiver incorreta.
+            <br />
+            <span className="text-xs text-orange-700 mt-1 block">
+              Nota: "{lastImport.note.substring(0, 50)}{lastImport.note.length > 50 ? '...' : ''}"
+            </span>
           </AlertDescription>
         </Alert>
       )}
