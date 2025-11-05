@@ -25,6 +25,7 @@ import {
   SidebarFooter,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const navigationItems = [
@@ -72,9 +73,79 @@ const navigationItems = [
   },
 ];
 
-export default function Layout({ children, currentPageName }) {
+function SidebarContentComponent() {
   const location = useLocation();
+  const { setOpenMobile } = useSidebar();
 
+  const handleLinkClick = () => {
+    // Fecha o sidebar em mobile quando um link é clicado
+    setOpenMobile(false);
+  };
+
+  return (
+    <>
+      <SidebarHeader className="border-b border-slate-200 p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="font-bold text-slate-900 text-lg">CaixaFácil</h2>
+            <p className="text-xs text-slate-500">Gestão Financeira Inteligente</p>
+          </div>
+        </div>
+      </SidebarHeader>
+      
+      <SidebarContent className="p-3">
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">
+            Menu Principal
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    className={`rounded-xl transition-all duration-200 my-1 ${
+                      location.pathname === item.url 
+                        ? 'bg-blue-50 text-blue-700 font-medium shadow-sm' 
+                        : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5" onClick={handleLinkClick}>
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.title}</span>
+                      {item.badge && (
+                        <span className={`ml-auto text-xs ${item.badgeColor || 'bg-blue-600'} text-white px-2 py-0.5 rounded-full`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-slate-200 p-4">
+        <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
+          <div className="flex items-center gap-2 mb-2">
+            <Repeat className="w-4 h-4 text-orange-600" />
+            <p className="text-xs font-semibold text-orange-900">Lembretes Automáticos</p>
+          </div>
+          <p className="text-xs text-orange-700 leading-relaxed">
+            Configure suas despesas recorrentes e receba lembretes por email!
+          </p>
+        </div>
+      </SidebarFooter>
+    </>
+  );
+}
+
+export default function Layout({ children, currentPageName }) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
@@ -90,63 +161,7 @@ export default function Layout({ children, currentPageName }) {
         `}</style>
         
         <Sidebar className="border-r border-slate-200 bg-white">
-          <SidebarHeader className="border-b border-slate-200 p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
-                <TrendingUp className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-slate-900 text-lg">CaixaFácil</h2>
-                <p className="text-xs text-slate-500">Gestão Financeira Inteligente</p>
-              </div>
-            </div>
-          </SidebarHeader>
-          
-          <SidebarContent className="p-3">
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">
-                Menu Principal
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navigationItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton 
-                        asChild 
-                        className={`rounded-xl transition-all duration-200 my-1 ${
-                          location.pathname === item.url 
-                            ? 'bg-blue-50 text-blue-700 font-medium shadow-sm' 
-                            : 'hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <Link to={item.url} className="flex items-center gap-3 px-3 py-2.5">
-                          <item.icon className="w-5 h-5" />
-                          <span>{item.title}</span>
-                          {item.badge && (
-                            <span className={`ml-auto text-xs ${item.badgeColor || 'bg-blue-600'} text-white px-2 py-0.5 rounded-full`}>
-                              {item.badge}
-                            </span>
-                          )}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-
-          <SidebarFooter className="border-t border-slate-200 p-4">
-            <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Repeat className="w-4 h-4 text-orange-600" />
-                <p className="text-xs font-semibold text-orange-900">Lembretes Automáticos</p>
-              </div>
-              <p className="text-xs text-orange-700 leading-relaxed">
-                Configure suas despesas recorrentes e receba lembretes por email!
-              </p>
-            </div>
-          </SidebarFooter>
+          <SidebarContentComponent />
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
