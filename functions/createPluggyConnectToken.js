@@ -13,21 +13,24 @@ Deno.serve(async (req) => {
             }, { status: 401 });
         }
 
+        console.log('Usuário autenticado:', user.email);
+
         const clientId = Deno.env.get("PLUGGY_CLIENT_ID");
         const clientSecret = Deno.env.get("PLUGGY_CLIENT_SECRET");
 
-        console.log('Client ID presente:', !!clientId);
-        console.log('Client Secret presente:', !!clientSecret);
+        console.log('Client ID:', clientId);
+        console.log('Client ID existe:', !!clientId);
+        console.log('Client Secret existe:', !!clientSecret);
 
         if (!clientId || !clientSecret) {
             return Response.json({
                 success: false,
-                error: 'Credenciais do Pluggy não configuradas. Configure PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET nas variáveis de ambiente.'
+                error: 'Credenciais do Pluggy não configuradas'
             }, { status: 500 });
         }
 
         // Obtém API Key do Pluggy
-        console.log('Tentando autenticar no Pluggy...');
+        console.log('1. Autenticando no Pluggy...');
         const authResponse = await fetch('https://api.pluggy.ai/auth', {
             method: 'POST',
             headers: {
@@ -39,31 +42,26 @@ Deno.serve(async (req) => {
             })
         });
 
-        console.log('Status da autenticação:', authResponse.status);
+        console.log('2. Status da autenticação:', authResponse.status);
 
         if (!authResponse.ok) {
             const errorText = await authResponse.text();
-            console.error('Erro na autenticação Pluggy:', errorText);
-            
-            let errorMessage = 'Falha na autenticação com Pluggy.';
-            
-            if (authResponse.status === 401) {
-                errorMessage = 'Credenciais do Pluggy inválidas. Verifique seu Client ID e Client Secret.';
-            } else if (authResponse.status === 403) {
-                errorMessage = 'Acesso negado pelo Pluggy. Verifique suas permissões.';
-            }
+            console.error('ERRO na autenticação Pluggy:', errorText);
             
             return Response.json({
                 success: false,
-                error: errorMessage,
+                error: 'Credenciais do Pluggy inválidas',
                 details: errorText
             }, { status: 500 });
         }
 
         const authData = await authResponse.json();
-        console.log('Autenticação bem-sucedida, criando connect token...');
+        console.log('3. Autenticação OK, API Key obtida');
 
-        // Cria Connect Token
+        // Cria Connect Token com clientUserId sendo o email do usuário
+        const clientUserId = user.id || user.email;
+        console.log('4. Criando connect token para user:', clientUserId);
+
         const connectTokenResponse = await fetch('https://api.pluggy.ai/connect_token', {
             method: 'POST',
             headers: {
@@ -71,24 +69,38 @@ Deno.serve(async (req) => {
                 'X-API-KEY': authData.apiKey
             },
             body: JSON.stringify({
-                clientUserId: user.id
+                clientUserId: clientUserId
             })
         });
 
-        console.log('Status do connect token:', connectTokenResponse.status);
+        console.log('5. Status do connect token:', connectTokenResponse.status);
 
         if (!connectTokenResponse.ok) {
             const errorText = await connectTokenResponse.text();
-            console.error('Erro ao criar connect token:', errorText);
+            console.error('ERRO ao criar connect token:', errorText);
+            console.error('Status:', connectTokenResponse.status);
+            
             return Response.json({
                 success: false,
                 error: 'Falha ao criar token de conexão',
-                details: errorText
+                details: errorText,
+                status: connectTokenResponse.status
             }, { status: 500 });
         }
 
         const connectTokenData = await connectTokenResponse.json();
-        console.log('Connect token criado com sucesso');
+        console.log('6. Connect token criado com sucesso!');
+        console.log('Access Token existe:', !!connectTokenData.accessToken);
+
+        if (!connectTokenData.accessToken) {
+            console.error('ERRO: accessToken não encontrado na resposta');
+            console.error('Resposta completa:', JSON.stringify(connectTokenData));
+            
+            return Response.json({
+                success: false,
+                error: 'Token de acesso não foi retornado pelo Pluggy'
+            }, { status: 500 });
+        }
 
         return Response.json({
             success: true,
@@ -96,11 +108,13 @@ Deno.serve(async (req) => {
         });
 
     } catch (error) {
-        console.error('Erro geral:', error);
+        console.error('ERRO GERAL:', error);
+        console.error('Stack:', error.stack);
+        
         return Response.json({
             success: false,
             error: error.message || 'Erro interno do servidor',
-            stack: error.stack
+            details: error.stack
         }, { status: 500 });
     }
 });
