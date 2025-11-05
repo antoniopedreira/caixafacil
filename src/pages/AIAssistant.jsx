@@ -221,7 +221,7 @@ Sempre que possível, mencione valores e percentuais específicos dos dados do u
   return (
     <div className="p-6 md:p-8 h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
-      <div className="mb-4">
+      <div className="mb-3">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
             <Brain className="w-6 h-6 text-white" />
@@ -237,41 +237,29 @@ Sempre que possível, mencione valores e percentuais específicos dos dados do u
         </div>
       </div>
 
-      {/* Benefícios - compactos */}
+      {/* Benefícios - ultra compactos */}
       {messages.length === 0 && (
         <div className="mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-            <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
-              <Sparkles className="w-5 h-5 text-purple-600 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-purple-900 text-sm">Insights Personalizados</h3>
-                <p className="text-xs text-purple-700">Análise dos seus dados reais</p>
-              </div>
+          <div className="flex items-center justify-center gap-6 mb-3 p-2 bg-slate-50 rounded-lg">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              <span className="text-xs font-medium text-slate-700">Insights Personalizados</span>
             </div>
-
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <TrendingUp className="w-5 h-5 text-blue-600 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-blue-900 text-sm">Recomendações Práticas</h3>
-                <p className="text-xs text-blue-700">Ações para melhorar seu caixa</p>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-medium text-slate-700">Recomendações Práticas</span>
             </div>
-
-            <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-              <Shield className="w-5 h-5 text-green-600 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-green-900 text-sm">100% Privado</h3>
-                <p className="text-xs text-green-700">Dados financeiros seguros</p>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-green-600" />
+              <span className="text-xs font-medium text-slate-700">100% Privado</span>
             </div>
           </div>
 
           {transactions.length === 0 && (
             <Alert className="border-orange-200 bg-orange-50">
               <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-900">
-                <strong>Dica:</strong> Para obter conselhos mais precisos, adicione algumas transações primeiro. 
-                Você pode importar extratos ou adicionar manualmente.
+              <AlertDescription className="text-orange-900 text-sm">
+                <strong>Dica:</strong> Para obter conselhos mais precisos, adicione algumas transações primeiro.
               </AlertDescription>
             </Alert>
           )}
