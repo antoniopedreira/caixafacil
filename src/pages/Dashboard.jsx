@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -125,6 +126,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
+      {/* Saldo total das contas */}
       <AccountBalance
         balance={totalBalance}
         selectedAccount={selectedAccount}
@@ -134,6 +136,7 @@ export default function Dashboard() {
         onToggleBalance={() => setShowBalance(!showBalance)}
       />
 
+      {/* Filtro de mês */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <Calendar className="w-5 h-5" />
@@ -153,7 +156,8 @@ export default function Dashboard() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      {/* Cards de resumo do mês + lista expandida */}
+      <div className="grid grid-cols-1 gap-3">
         <MonthSummaryCards
           income={monthStats.income}
           expense={monthStats.expense}
@@ -163,6 +167,7 @@ export default function Dashboard() {
           expandedCard={expandedCard}
         />
         
+        {/* Lista expandida de entradas */}
         {expandedCard === 'income' && (
           <ExpandedTransactionList
             transactions={incomeTransactions}
