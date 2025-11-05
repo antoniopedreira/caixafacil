@@ -9,6 +9,138 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
+// Função para parsear CSV manualmente
+const parseCSV = (text) => {
+  const lines = text.split('\n').filter(line => line.trim());
+  if (lines.length === 0) return { headers: [], rows: [] };
+  
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const rows = lines.slice(1).map(line => {
+    const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] || '';
+    });
+    return row;
+  });
+  
+  return { headers, rows };
+};
+
+// Função para detectar colunas automaticamente
+const detectColumns = (headers) => {
+  const mapping = {};
+  
+  // Detecta data
+  const datePatterns = ['data', 'date', 'dt'];
+  mapping.date = headers.find(h => 
+    datePatterns.some(p => h.toLowerCase().includes(p))
+  );
+  
+  // Detecta descrição
+  const descPatterns = ['descri', 'description', 'historico', 'hist'];
+  mapping.description = headers.find(h => 
+    descPatterns.some(p => h.toLowerCase().includes(p))
+  );
+  
+  // Detecta valor
+  const valuePatterns = ['valor', 'value', 'amount', 'r$'];
+  mapping.value = headers.find(h => 
+    valuePatterns.some(p => h.toLowerCase().includes(p))
+  );
+  
+  // Detecta tipo
+  const typePatterns = ['tipo', 'type', 'natureza'];
+  mapping.type = headers.find(h => 
+    typePatterns.some(p => h.toLowerCase().includes(p))
+  );
+  
+  // Detecta fornecedor (opcional)
+  const supplierPatterns = ['fornecedor', 'supplier', 'destinatario'];
+  mapping.supplier = headers.find(h => 
+    supplierPatterns.some(p => h.toLowerCase().includes(p))
+  );
+  
+  return mapping;
+};
+
+// Função para converter data brasileira para ISO
+const parseDate = (dateStr) => {
+  if (!dateStr) return null;
+  
+  // Remove espaços
+  dateStr = dateStr.trim();
+  
+  // Tenta formato DD/MM/YYYY ou DD-MM-YYYY
+  const parts = dateStr.split(/[\/\-]/);
+  if (parts.length === 3) {
+    const day = parts[0].padStart(2, '0');
+    const month = parts[1].padStart(2, '0');
+    let year = parts[2];
+    
+    // Se ano tem 2 dígitos, adiciona 20
+    if (year.length === 2) {
+      year = '20' + year;
+    }
+    
+    return `${year}-${month}-${day}`;
+  }
+  
+  // Se já está em formato ISO
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    return dateStr;
+  }
+  
+  // Fallback: data atual
+  return new Date().toISOString().split('T')[0];
+};
+
+// Função para converter valor brasileiro para número
+const parseValue = (valueStr) => {
+  if (!valueStr) return 0;
+  
+  // Remove R$, espaços e outros caracteres
+  valueStr = valueStr.replace(/[R$\s]/g, '');
+  
+  // Substitui vírgula por ponto (decimal brasileiro)
+  // Mas primeiro remove pontos de milhar
+  valueStr = valueStr.replace(/\./g, '');
+  valueStr = valueStr.replace(',', '.');
+  
+  const value = parseFloat(valueStr);
+  return isNaN(value) ? 0 : value;
+};
+
+// Função para detectar tipo da transação
+const detectType = (typeStr, value, description) => {
+  if (!typeStr) {
+    // Se não tem tipo, infere pelo valor ou descrição
+    if (value > 0) return 'income';
+    if (value < 0) return 'expense';
+    
+    // Palavras-chave de receita
+    const incomeWords = ['receb', 'credito', 'crédito', 'deposit', 'entrada'];
+    if (incomeWords.some(word => description?.toLowerCase().includes(word))) {
+      return 'income';
+    }
+    
+    return 'expense';
+  }
+  
+  typeStr = typeStr.toLowerCase();
+  
+  if (typeStr.includes('créd') || typeStr.includes('cred') || typeStr.includes('receb')) {
+    return 'income';
+  }
+  
+  if (typeStr.includes('déb') || typeStr.includes('deb') || typeStr.includes('pag')) {
+    return 'expense';
+  }
+  
+  // Fallback: se valor é negativo, é despesa
+  return value < 0 ? 'expense' : 'income';
+};
+
 export default function UploadStatement() {
   const queryClient = useQueryClient();
   const [file, setFile] = useState(null);
@@ -59,7 +191,7 @@ export default function UploadStatement() {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target.result);
       reader.onerror = (e) => reject(e);
-      reader.readAsText(file);
+      reader.readAsText(file, 'UTF-8');
     });
   };
 
@@ -75,162 +207,109 @@ export default function UploadStatement() {
 
     setStatus("uploading");
     setProgress(10);
-    setMessage("Processando arquivo...");
+    setMessage("Lendo arquivo...");
     setErrorDetails("");
 
     try {
-      let fileContent = '';
       const fileExtension = file.name.split('.').pop().toLowerCase();
       
-      // Para CSV, lê o conteúdo diretamente
-      if (fileExtension === 'csv') {
-        setProgress(20);
-        setMessage("Lendo arquivo CSV...");
-        fileContent = await readFileAsText(file);
-      } else {
-        // Para outros formatos, faz upload primeiro
-        setMessage("Enviando arquivo...");
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        
-        // Busca o conteúdo do arquivo
-        const response = await fetch(file_url);
-        if (fileExtension === 'pdf') {
-          // Para PDF, precisamos usar o file_url com o LLM
-          fileContent = file_url;
-        } else {
-          fileContent = await response.text();
-        }
+      if (fileExtension !== 'csv') {
+        throw new Error("Apenas arquivos CSV são suportados no momento. Por favor, exporte seu extrato em formato CSV.");
       }
+
+      // Lê o arquivo CSV
+      setProgress(20);
+      const csvContent = await readFileAsText(file);
       
       setProgress(30);
-      setStatus("processing");
-      setMessage("Extraindo transações com IA... aguarde até 40 segundos");
-
-      // Monta o prompt baseado no tipo de arquivo
-      const extractionPrompt = fileExtension === 'pdf'
-        ? `Você é um especialista em análise de extratos bancários brasileiros.
-
-Analise o PDF anexado e extraia TODAS as transações bancárias encontradas.
-
-Para cada transação, identifique:
-- **data**: Data no formato YYYY-MM-DD (se o ano não estiver explícito, use 2025)
-- **description**: Descrição completa da transação
-- **amount**: Valor numérico absoluto (apenas número, sem R$, pontos ou vírgulas)
-- **type**: "income" para CRÉDITO/ENTRADA ou "expense" para DÉBITO/SAÍDA
-
-Retorne APENAS um JSON no formato:
-{
-  "transactions": [
-    {
-      "date": "2025-01-05",
-      "description": "Pagamento - Fornecedor XYZ",
-      "amount": 150.00,
-      "type": "expense"
-    }
-  ]
-}`
-        : `Você é um especialista em análise de extratos bancários brasileiros.
-
-Analise o extrato abaixo e extraia TODAS as transações bancárias encontradas.
-
-Para cada transação, identifique:
-- **data**: Data no formato YYYY-MM-DD (se o ano não estiver explícito, use 2025)
-- **description**: Descrição completa da transação (combine colunas Descrição + Fornecedor se houver)
-- **amount**: Valor numérico absoluto (converta 1.234,56 para 1234.56)
-- **type**: "income" para CRÉDITO/ENTRADA ou "expense" para DÉBITO/SAÍDA
-
-**IMPORTANTE:**
-- Extraia TODAS as linhas de transação
-- Ignore cabeçalhos, totais e linhas de saldo
-- Se houver coluna "Tipo" ou "Natureza", use para definir income/expense
-
-**Conteúdo do extrato:**
-${fileContent}
-
-Retorne APENAS um JSON no formato:
-{
-  "transactions": [
-    {
-      "date": "2025-01-05",
-      "description": "Pagamento - Fornecedor XYZ",
-      "amount": 150.00,
-      "type": "expense"
-    }
-  ]
-}`;
-
-      const llmParams = {
-        prompt: extractionPrompt,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            transactions: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  date: { type: "string" },
-                  description: { type: "string" },
-                  amount: { type: "number" },
-                  type: { type: "string", enum: ["income", "expense"] }
-                },
-                required: ["date", "description", "amount", "type"]
-              }
-            }
-          },
-          required: ["transactions"]
-        }
-      };
-
-      // Para PDF, adiciona o file_urls
-      if (fileExtension === 'pdf') {
-        llmParams.file_urls = fileContent;
-      }
-
-      const extractionResult = await base44.integrations.Core.InvokeLLM(llmParams);
-
-      setProgress(60);
-
-      if (!extractionResult?.transactions || extractionResult.transactions.length === 0) {
-        throw new Error("Nenhuma transação foi encontrada no arquivo. Certifique-se de que é um extrato bancário válido com movimentações.");
-      }
-
-      let transactions = extractionResult.transactions;
+      setMessage("Analisando estrutura do CSV...");
       
-      // Validação
-      transactions = transactions.filter(t => {
-        if (!t.date || !t.description || !t.amount || !t.type) {
-          console.warn('Transação inválida ignorada:', t);
-          return false;
-        }
-        // Remove valores zerados
-        if (t.amount === 0) return false;
-        return true;
-      });
+      // Parseia o CSV
+      const { headers, rows } = parseCSV(csvContent);
+      
+      if (rows.length === 0) {
+        throw new Error("Nenhuma transação encontrada no arquivo CSV.");
+      }
+      
+      // Detecta colunas automaticamente
+      const columnMapping = detectColumns(headers);
+      
+      if (!columnMapping.date || !columnMapping.description || !columnMapping.value) {
+        throw new Error("Não foi possível identificar as colunas necessárias (Data, Descrição, Valor). Verifique se o arquivo está no formato correto.");
+      }
+      
+      setProgress(40);
+      setMessage(`Processando ${rows.length} transações...`);
+      
+      // Converte as linhas em transações
+      const transactions = rows
+        .map(row => {
+          const dateStr = row[columnMapping.date];
+          const description = row[columnMapping.description] || '';
+          const supplierInfo = columnMapping.supplier ? row[columnMapping.supplier] : '';
+          const fullDescription = supplierInfo ? `${description} - ${supplierInfo}` : description;
+          
+          const valueStr = row[columnMapping.value];
+          const typeStr = columnMapping.type ? row[columnMapping.type] : '';
+          
+          const date = parseDate(dateStr);
+          const value = parseValue(valueStr);
+          const type = detectType(typeStr, value, fullDescription);
+          
+          return {
+            date,
+            description: fullDescription.trim(),
+            amount: Math.abs(value),
+            type
+          };
+        })
+        .filter(t => {
+          // Remove transações inválidas
+          if (!t.date || !t.description || t.amount === 0) {
+            console.warn('Transação inválida ignorada:', t);
+            return false;
+          }
+          return true;
+        });
       
       if (transactions.length === 0) {
-        throw new Error("Nenhuma transação válida foi encontrada após validação.");
+        throw new Error("Nenhuma transação válida encontrada após processar o arquivo.");
       }
-
+      
+      setProgress(60);
       setMessage(`Categorizando ${transactions.length} transações com IA...`);
-      setProgress(75);
-
-      // Categoriza em lote (máximo 50 por vez para não sobrecarregar)
-      const batchSize = 50;
+      
+      // Categoriza em lotes de 30
+      const batchSize = 30;
       let categories = [];
       
       for (let i = 0; i < transactions.length; i += batchSize) {
         const batch = transactions.slice(i, i + batchSize);
         
-        const categorizationPrompt = `Categorize cada uma das ${batch.length} transações abaixo.
+        const categorizationPrompt = `Categorize cada transação abaixo em UMA categoria.
 
-**RECEITAS (income):** vendas, servicos, outras_receitas
-**DESPESAS (expense):** salarios_funcionarios, fornecedores, aluguel, contas_servicos, impostos_taxas, marketing_publicidade, equipamentos_materiais, manutencao, combustivel_transporte, outras_despesas
+**Para RECEITAS (income):**
+- vendas: Vendas de produtos/serviços
+- servicos: Prestação de serviços, honorários
+- outras_receitas: Outras receitas
+
+**Para DESPESAS (expense):**
+- salarios_funcionarios: Salários e folha de pagamento
+- fornecedores: Pagamentos a fornecedores
+- aluguel: Aluguel
+- contas_servicos: Luz, água, internet, telefone
+- impostos_taxas: Impostos e taxas
+- marketing_publicidade: Marketing
+- equipamentos_materiais: Equipamentos e materiais
+- manutencao: Manutenção
+- combustivel_transporte: Combustível e transporte
+- outras_despesas: Outras despesas
 
 **Transações:**
-${batch.map((t, idx) => `${idx + 1}. "${t.description}" | ${t.type} | R$ ${t.amount}`).join('\n')}
+${batch.map((t, idx) => `${idx + 1}. "${t.description}" | ${t.type} | R$ ${t.amount.toFixed(2)}`).join('\n')}
 
-Retorne um array com as categorias NA MESMA ORDEM:`;
+Retorne APENAS um array JSON com as categorias na mesma ordem:
+["categoria1", "categoria2", ...]`;
 
         try {
           const catResult = await base44.integrations.Core.InvokeLLM({
@@ -248,17 +327,22 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
           
           categories = categories.concat(catResult.categories || []);
         } catch (error) {
-          console.warn('Erro na categorização do lote, usando padrão:', error);
+          console.warn('Erro na categorização do lote, usando categorias padrão:', error);
+          // Usa categorias padrão se falhar
           categories = categories.concat(batch.map(t => 
             t.type === 'income' ? 'outras_receitas' : 'outras_despesas'
           ));
         }
+        
+        // Atualiza progresso
+        const batchProgress = 60 + (30 * (i + batch.length) / transactions.length);
+        setProgress(Math.round(batchProgress));
       }
-
+      
       setProgress(90);
       setMessage("Salvando transações...");
       
-      // Cria transações
+      // Cria as transações
       const transactionsToCreate = transactions.map((t, i) => {
         const category = categories[i] || (t.type === 'income' ? 'outras_receitas' : 'outras_despesas');
         
@@ -270,7 +354,7 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
           category: category,
           payment_method: "transferencia",
           bank_account: bankAccountName.trim(),
-          notes: `Importado em ${new Date().toLocaleDateString('pt-BR')}`
+          notes: `Importado do extrato CSV em ${new Date().toLocaleDateString('pt-BR')}`
         };
       });
 
@@ -289,27 +373,14 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
         setStatus("idle");
         setProgress(0);
         setMessage("");
-      }, 4000);
+      }, 5000);
       
     } catch (error) {
-      console.error("Erro:", error);
+      console.error("Erro no processamento:", error);
       setStatus("error");
       
       let userMessage = "Erro ao processar arquivo";
-      let details = "";
-      
-      if (error.message) {
-        if (error.message.includes("encontrada") || error.message.includes("Nenhuma")) {
-          userMessage = "Nenhuma transação encontrada";
-          details = "O arquivo não parece conter transações bancárias válidas. Verifique se é um extrato com movimentações.";
-        } else if (error.message.includes("timeout")) {
-          userMessage = "Tempo excedido";
-          details = "Arquivo muito grande. Tente dividir em períodos menores (1-2 meses).";
-        } else {
-          userMessage = "Erro ao processar";
-          details = error.message;
-        }
-      }
+      let details = error.message || "Erro desconhecido";
       
       setMessage(userMessage);
       setErrorDetails(details);
@@ -321,14 +392,14 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
       <div>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Importar Extrato Bancário</h1>
         <p className="text-slate-600">
-          Upload de extrato CSV ou PDF - processamento automático com IA
+          Upload de extrato CSV - processamento automático
         </p>
       </div>
 
       <Alert className="border-blue-200 bg-blue-50">
         <AlertCircle className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-900">
-          <strong>Melhor resultado:</strong> Use CSV exportado do banco. PDFs funcionam se tiverem texto selecionável (não scan/foto).
+          <strong>Formato aceito:</strong> Arquivos CSV exportados do banco com colunas de Data, Descrição e Valor.
         </AlertDescription>
       </Alert>
 
@@ -349,7 +420,7 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
                   <Upload className="w-10 h-10 text-blue-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                  Arraste seu extrato aqui
+                  Arraste seu extrato CSV aqui
                 </h3>
                 <p className="text-slate-600 mb-4">
                   ou clique para selecionar
@@ -358,16 +429,16 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
                   type="file"
                   id="file-upload"
                   className="hidden"
-                  accept=".csv,.pdf"
+                  accept=".csv"
                   onChange={handleFileInput}
                 />
                 <label htmlFor="file-upload">
                   <Button asChild variant="outline" className="cursor-pointer">
-                    <span>Selecionar Arquivo</span>
+                    <span>Selecionar Arquivo CSV</span>
                   </Button>
                 </label>
                 <p className="text-xs text-slate-500 mt-4">
-                  Formatos: CSV ou PDF (máx. 10MB)
+                  Apenas arquivos CSV (máx. 10MB)
                 </p>
               </>
             ) : (
@@ -382,7 +453,7 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
                 <div>
                   <p className="font-semibold text-slate-900">{file.name}</p>
                   <p className="text-sm text-slate-600">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                    {(file.size / 1024).toFixed(2)} KB
                   </p>
                 </div>
 
@@ -395,7 +466,7 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
                       id="bank-account-name"
                       value={bankAccountName}
                       onChange={(e) => setBankAccountName(e.target.value)}
-                      placeholder="Ex: C6 Bank PJ, Nubank, Bradesco..."
+                      placeholder="Ex: C6 Bank, Nubank, Bradesco..."
                       className="text-center"
                     />
                     <p className="text-xs text-slate-500">
@@ -408,7 +479,7 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
                   <div className="space-y-3">
                     <Progress value={progress} className="h-2" />
                     <div className="flex items-center justify-center gap-2 text-sm">
-                      {status === "uploading" || status === "processing" ? (
+                      {status === "uploading" ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                           <span className="text-slate-700 font-medium">{message}</span>
@@ -488,76 +559,26 @@ Retorne um array com as categorias NA MESMA ORDEM:`;
         </CardContent>
       </Card>
 
-      {/* Como funciona */}
       <Card>
         <CardHeader>
-          <CardTitle>Como Funciona</CardTitle>
+          <CardTitle>Formato Esperado do CSV</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
-              1
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Upload do extrato</h4>
-              <p className="text-sm text-slate-600">
-                CSV do banco (melhor opção) ou PDF com texto selecionável
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
-              2
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">IA analisa o arquivo</h4>
-              <p className="text-sm text-slate-600">
-                Extração automática de data, descrição, valor e tipo de cada transação
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
-              3
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Categorização inteligente</h4>
-              <p className="text-sm text-slate-600">
-                Cada transação é categorizada automaticamente (vendas, despesas, etc.)
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
-              4
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Pronto!</h4>
-              <p className="text-sm text-slate-600">
-                Visualize no dashboard com análises automáticas
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dicas */}
-      <Card className="border-orange-200 bg-orange-50">
-        <CardHeader>
-          <CardTitle className="text-orange-900 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            Dicas para Melhor Resultado
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-orange-900 space-y-2">
-          <p>✓ <strong>CSV:</strong> Formato ideal, 100% de precisão</p>
-          <p>✓ <strong>PDF:</strong> Texto selecionável (não scan/foto)</p>
-          <p>✓ <strong>Período:</strong> 1-3 meses por arquivo</p>
-          <p>✓ <strong>Tamanho:</strong> Máximo 10MB</p>
-          <p>✓ <strong>Nome claro:</strong> Ex: "Nubank PJ", "C6 Bank"</p>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-slate-700">
+            O arquivo CSV deve conter pelo menos as seguintes colunas:
+          </p>
+          <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
+            <li><strong>Data:</strong> Data da transação (DD/MM/YYYY)</li>
+            <li><strong>Descrição:</strong> Descrição da transação</li>
+            <li><strong>Valor:</strong> Valor em reais (formato brasileiro: 1.234,56)</li>
+            <li><strong>Tipo</strong> (opcional): Crédito/Débito ou Entrada/Saída</li>
+          </ul>
+          <Alert className="border-green-200 bg-green-50 mt-3">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-900 text-sm">
+              O sistema detecta automaticamente as colunas mesmo se tiverem nomes diferentes!
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
     </div>
