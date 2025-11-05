@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -23,7 +24,8 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowUpRight, ArrowDownRight, Trash2, Filter } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Plus, ArrowUpRight, ArrowDownRight, Trash2, Filter, AlertCircle, Undo2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -51,6 +53,7 @@ export default function Transactions() {
   const [open, setOpen] = useState(false);
   const [filterType, setFilterType] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [undoDialogOpen, setUndoDialogOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -68,6 +71,47 @@ export default function Transactions() {
     queryFn: () => base44.entities.Transaction.list('-date'),
     initialData: [],
   });
+
+  // Identifica a última importação
+  const lastImport = React.useMemo(() => {
+    const importedTransactions = transactions.filter(t => 
+      t.notes?.includes('Importado do extrato CSV em') ||
+      t.notes?.includes('Importado em')
+    );
+    
+    if (importedTransactions.length === 0) return null;
+    
+    // Agrupa por data de importação (extraída da nota)
+    const groups = {};
+    importedTransactions.forEach(t => {
+      const match = t.notes?.match(/Importado (?:do extrato CSV )?em (\d{2}\/\d{2}\/\d{4})/);
+      if (match) {
+        const importDate = match[1];
+        if (!groups[importDate]) {
+          groups[importDate] = [];
+        }
+        groups[importDate].push(t);
+      }
+    });
+    
+    // Pega a importação mais recente
+    const dates = Object.keys(groups).sort((a, b) => {
+      const [dayA, monthA, yearA] = a.split('/');
+      const [dayB, monthB, yearB] = b.split('/');
+      const dateA = new Date(yearA, monthA - 1, dayA);
+      const dateB = new Date(yearB, monthB - 1, dayB);
+      return dateB - dateA;
+    });
+    
+    if (dates.length === 0) return null;
+    
+    const latestDate = dates[0];
+    return {
+      date: latestDate,
+      count: groups[latestDate].length,
+      transactions: groups[latestDate]
+    };
+  }, [transactions]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Transaction.create(data),
@@ -94,6 +138,19 @@ export default function Transactions() {
     },
   });
 
+  const undoImportMutation = useMutation({
+    mutationFn: async (transactionIds) => {
+      // Deleta todas as transações em paralelo
+      await Promise.all(
+        transactionIds.map(id => base44.entities.Transaction.delete(id))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      setUndoDialogOpen(false);
+    },
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const amount = parseFloat(formData.amount);
@@ -101,6 +158,13 @@ export default function Transactions() {
       ...formData,
       amount: formData.type === 'expense' ? -Math.abs(amount) : Math.abs(amount)
     });
+  };
+
+  const handleUndoImport = () => {
+    if (lastImport) {
+      const ids = lastImport.transactions.map(t => t.id);
+      undoImportMutation.mutate(ids);
+    }
   };
 
   const incomeCategories = [
@@ -139,124 +203,148 @@ export default function Transactions() {
           <p className="text-slate-600">Gerencie todas as movimentações financeiras</p>
         </div>
         
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Transação
+        <div className="flex gap-3">
+          {lastImport && (
+            <Button 
+              variant="outline" 
+              className="text-orange-600 border-orange-300 hover:bg-orange-50"
+              onClick={() => setUndoDialogOpen(true)}
+            >
+              <Undo2 className="w-4 h-4 mr-2" />
+              Desfazer Última Importação
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Adicionar Transação</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Data</Label>
-                <Input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value, category: "" })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">Receita</SelectItem>
-                    <SelectItem value="expense">Despesa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(formData.type === 'income' ? incomeCategories : expenseCategories).map(cat => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Input
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Ex: Venda de produto X"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Valor (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Forma de Pagamento</Label>
-                <Select
-                  value={formData.payment_method}
-                  onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                    <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                    <SelectItem value="transferencia">Transferência</SelectItem>
-                    <SelectItem value="boleto">Boleto</SelectItem>
-                    <SelectItem value="cheque">Cheque</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Observações</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Informações adicionais..."
-                  rows={3}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Salvando..." : "Salvar Transação"}
+          )}
+          
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Transação
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Adicionar Transação</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Data</Label>
+                  <Input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) => setFormData({ ...formData, type: value, category: "" })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="income">Receita</SelectItem>
+                      <SelectItem value="expense">Despesa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(formData.type === 'income' ? incomeCategories : expenseCategories).map(cat => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Ex: Venda de produto X"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Valor (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Forma de Pagamento</Label>
+                  <Select
+                    value={formData.payment_method}
+                    onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                      <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                      <SelectItem value="transferencia">Transferência</SelectItem>
+                      <SelectItem value="boleto">Boleto</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Observações</Label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Informações adicionais..."
+                    rows={3}
+                  />
+                </div>
+
+                <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Salvando..." : "Salvar Transação"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {/* Alerta sobre última importação */}
+      {lastImport && (
+        <Alert className="border-orange-200 bg-orange-50">
+          <AlertCircle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-900">
+            <strong>Última importação:</strong> {lastImport.count} transações importadas em {lastImport.date}. 
+            Use o botão "Desfazer" acima se esta importação estiver incorreta.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Filtros */}
       <Card className="p-4">
@@ -355,6 +443,38 @@ export default function Transactions() {
           )}
         </div>
       </Card>
+
+      {/* Dialog de confirmação para desfazer importação */}
+      <Dialog open={undoDialogOpen} onOpenChange={setUndoDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Desfazer Última Importação?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Esta ação irá <strong>excluir permanentemente {lastImport?.count} transações</strong> importadas em {lastImport?.date}.
+            </p>
+            <Alert className="border-orange-200 bg-orange-50">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-900 text-sm">
+                <strong>Atenção:</strong> Esta ação não pode ser desfeita!
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUndoDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleUndoImport}
+              disabled={undoImportMutation.isPending}
+            >
+              {undoImportMutation.isPending ? "Excluindo..." : "Sim, Excluir Todas"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
