@@ -1,7 +1,10 @@
+
 import React, { useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +13,7 @@ import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-reac
 export default function UploadStatement() {
   const queryClient = useQueryClient();
   const [file, setFile] = useState(null);
+  const [bankAccountName, setBankAccountName] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [status, setStatus] = useState("idle"); // idle, uploading, processing, success, error
   const [progress, setProgress] = useState(0);
@@ -36,7 +40,8 @@ export default function UploadStatement() {
     if (droppedFile) {
       setFile(droppedFile);
       setStatus("idle");
-      setErrorDetails("");
+      setErrorDetails(""); // Clear error when new file is dropped
+      setMessage(""); // Clear message
     }
   }, []);
 
@@ -45,17 +50,25 @@ export default function UploadStatement() {
     if (selectedFile) {
       setFile(selectedFile);
       setStatus("idle");
-      setErrorDetails("");
+      setErrorDetails(""); // Clear error when new file is selected
+      setMessage(""); // Clear message
     }
   };
 
   const processFile = async () => {
     if (!file) return;
+    
+    if (!bankAccountName.trim()) {
+      setStatus("error"); // Set status to error to show the alert
+      setMessage("Nome da conta bancária é obrigatório.");
+      setErrorDetails("Por favor, informe o nome da conta bancária para prosseguir com a importação.");
+      return;
+    }
 
     setStatus("uploading");
     setProgress(10);
     setMessage("Enviando arquivo...");
-    setErrorDetails("");
+    setErrorDetails(""); // Clear previous error details
 
     try {
       // Upload do arquivo
@@ -138,7 +151,7 @@ export default function UploadStatement() {
         setMessage(`Importando ${transactions.length} transações...`);
         setProgress(80);
         
-        // Criar transações em lote
+        // Criar transações em lote com o nome da conta bancária
         const transactionsToCreate = transactions.map(t => ({
           date: t.date,
           description: t.description,
@@ -146,6 +159,7 @@ export default function UploadStatement() {
           type: t.type,
           category: t.category,
           payment_method: "transferencia",
+          bank_account: bankAccountName.trim(), // Adiciona o nome da conta
           notes: `Importado do extrato em ${new Date().toLocaleDateString('pt-BR')}`
         }));
 
@@ -154,12 +168,13 @@ export default function UploadStatement() {
         setProgress(100);
         setStatus("success");
         setExtractedCount(transactions.length);
-        setMessage(`✅ ${transactions.length} transações importadas com sucesso!`);
+        setMessage(`✅ ${transactions.length} transações importadas para ${bankAccountName}!`);
         
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
         
         setTimeout(() => {
           setFile(null);
+          setBankAccountName(""); // Reset bank account name on success
           setStatus("idle");
           setProgress(0);
           setMessage("");
@@ -265,6 +280,25 @@ export default function UploadStatement() {
                   </p>
                 </div>
 
+                {/* Campo para nome da conta bancária */}
+                {status === "idle" && (
+                  <div className="max-w-md mx-auto space-y-2">
+                    <Label htmlFor="bank-account-name" className="text-left block">
+                      Nome da Conta Bancária *
+                    </Label>
+                    <Input
+                      id="bank-account-name"
+                      value={bankAccountName}
+                      onChange={(e) => setBankAccountName(e.target.value)}
+                      placeholder="Ex: C6 Bank, Nubank, Banco do Brasil..."
+                      className="text-center"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Isso ajudará a identificar de qual conta são essas transações
+                    </p>
+                  </div>
+                )}
+
                 {status !== "idle" && (
                   <div className="space-y-3">
                     <Progress value={progress} className="h-2" />
@@ -304,13 +338,16 @@ export default function UploadStatement() {
                       variant="outline"
                       onClick={() => {
                         setFile(null);
+                        setBankAccountName(""); // Reset bank account name on remove
                         setErrorDetails("");
+                        setMessage("");
                       }}
                     >
                       Remover
                     </Button>
                     <Button
                       onClick={processFile}
+                      disabled={!bankAccountName.trim()}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       Processar Extrato
@@ -324,12 +361,15 @@ export default function UploadStatement() {
                       variant="outline"
                       onClick={() => {
                         setFile(null);
+                        setBankAccountName(""); // Reset bank account name on try another
                         setStatus("idle");
                         setErrorDetails("");
+                        setMessage("");
                       }}
                     >
                       Tentar Outro Arquivo
                     </Button>
+                    {/* The "Tentar Novamente" button needs the bankAccountName to retry, so we don't reset it here */}
                     <Button
                       onClick={processFile}
                       className="bg-blue-600 hover:bg-blue-700"
@@ -367,6 +407,18 @@ export default function UploadStatement() {
               2
             </div>
             <div>
+              <h4 className="font-semibold text-slate-900 mb-1">Informe a conta bancária</h4>
+              <p className="text-sm text-slate-600">
+                Digite o nome da conta (ex: C6 Bank, Nubank) para identificar as transações
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
+              3
+            </div>
+            <div>
               <h4 className="font-semibold text-slate-900 mb-1">IA processa automaticamente</h4>
               <p className="text-sm text-slate-600">
                 Nossa inteligência artificial lê o arquivo e identifica todas as transações com suas datas, valores e descrições
@@ -376,7 +428,7 @@ export default function UploadStatement() {
 
           <div className="flex gap-4">
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
-              3
+              4
             </div>
             <div>
               <h4 className="font-semibold text-slate-900 mb-1">Categorização inteligente</h4>
@@ -388,12 +440,12 @@ export default function UploadStatement() {
 
           <div className="flex gap-4">
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
-              4
+              5
             </div>
             <div>
               <h4 className="font-semibold text-slate-900 mb-1">Pronto para análise</h4>
               <p className="text-sm text-slate-600">
-                Visualize seus dados no dashboard com gráficos e relatórios automáticos
+                Visualize seus dados no dashboard com gráficos e relatórios automáticos, separados por conta
               </p>
             </div>
           </div>
@@ -413,6 +465,7 @@ export default function UploadStatement() {
           <p>✓ Extratos em formato CSV funcionam melhor</p>
           <p>✓ Certifique-se de que o arquivo contém data, descrição e valor</p>
           <p>✓ Evite arquivos muito grandes (máx. 10MB)</p>
+          <p>✓ Use nomes de contas descritivos para facilitar a identificação</p>
         </CardContent>
       </Card>
     </div>
