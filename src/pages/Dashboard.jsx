@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -13,13 +12,13 @@ import AccountBalance from "../components/dashboard/AccountBalance";
 import MonthSummaryCards from "../components/dashboard/MonthSummaryCards";
 import UpcomingExpenses from "../components/dashboard/UpcomingExpenses";
 import RecentTransactions from "../components/dashboard/RecentTransactions";
-import TransactionListModal from "../components/dashboard/TransactionListModal";
+import ExpandedTransactionList from "../components/dashboard/ExpandedTransactionList";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [showBalance, setShowBalance] = useState(true);
-  const [transactionModal, setTransactionModal] = useState({ open: false, type: null });
+  const [expandedCard, setExpandedCard] = useState(null); // 'income', 'expense', ou null
 
   const { data: transactions, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions'],
@@ -103,22 +102,17 @@ export default function Dashboard() {
     };
   }, [filteredTransactions]);
 
-  const handleOpenIncomeModal = () => {
-    setTransactionModal({ open: true, type: 'income' });
+  const handleToggleCard = (type) => {
+    setExpandedCard(expandedCard === type ? null : type);
   };
 
-  const handleOpenExpenseModal = () => {
-    setTransactionModal({ open: true, type: 'expense' });
-  };
+  const incomeTransactions = React.useMemo(() => {
+    return filteredTransactions.filter(t => t.type === 'income');
+  }, [filteredTransactions]);
 
-  const handleCloseModal = () => {
-    setTransactionModal({ open: false, type: null });
-  };
-
-  const modalTransactions = React.useMemo(() => {
-    if (!transactionModal.type) return [];
-    return filteredTransactions.filter(t => t.type === transactionModal.type);
-  }, [filteredTransactions, transactionModal.type]);
+  const expenseTransactions = React.useMemo(() => {
+    return filteredTransactions.filter(t => t.type === 'expense');
+  }, [filteredTransactions]);
 
   if (isLoading) {
     return (
@@ -166,14 +160,35 @@ export default function Dashboard() {
         </Select>
       </div>
 
-      {/* Cards de resumo do mês */}
-      <MonthSummaryCards
-        income={monthStats.income}
-        expense={monthStats.expense}
-        balance={monthStats.balance}
-        onClickIncome={handleOpenIncomeModal}
-        onClickExpense={handleOpenExpenseModal}
-      />
+      {/* Cards de resumo do mês + lista expandida */}
+      <div className="grid grid-cols-3 gap-3">
+        <MonthSummaryCards
+          income={monthStats.income}
+          expense={monthStats.expense}
+          balance={monthStats.balance}
+          onClickIncome={() => handleToggleCard('income')}
+          onClickExpense={() => handleToggleCard('expense')}
+          expandedCard={expandedCard}
+        />
+        
+        {/* Lista expandida de entradas */}
+        {expandedCard === 'income' && (
+          <ExpandedTransactionList
+            transactions={incomeTransactions}
+            type="income"
+            onClose={() => setExpandedCard(null)}
+          />
+        )}
+        
+        {/* Lista expandida de saídas */}
+        {expandedCard === 'expense' && (
+          <ExpandedTransactionList
+            transactions={expenseTransactions}
+            type="expense"
+            onClose={() => setExpandedCard(null)}
+          />
+        )}
+      </div>
 
       {/* Alert se não houver transações */}
       {transactions.length === 0 && (
@@ -190,14 +205,6 @@ export default function Dashboard() {
 
       {/* Últimas transações */}
       <RecentTransactions transactions={transactions} />
-
-      {/* Modal de transações */}
-      <TransactionListModal
-        open={transactionModal.open}
-        onClose={handleCloseModal}
-        transactions={modalTransactions}
-        type={transactionModal.type}
-      />
     </div>
   );
 }
