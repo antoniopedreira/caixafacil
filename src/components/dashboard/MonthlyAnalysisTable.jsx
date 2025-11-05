@@ -33,6 +33,33 @@ const CATEGORY_NAMES = {
   outras_despesas: "Outras Despesas"
 };
 
+// Função para abreviar e formatar descrição (igual ao ExpandedTransactionList)
+const formatDescription = (description, maxWords = 4) => {
+  if (!description) return '';
+  
+  const toTitleCase = (str) => {
+    return str.toLowerCase().split(' ').map(word => {
+      if (['de', 'da', 'do', 'e', 'a', 'o', 'das', 'dos'].includes(word.toLowerCase())) {
+        return word.toLowerCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+  
+  // Remove frases como "recebido de", "enviado para", etc
+  let cleaned = description
+    .replace(/recebido\s+de\s+/gi, '')
+    .replace(/enviado\s+para\s+/gi, '')
+    .replace(/recebido\s+/gi, '')
+    .replace(/enviado\s+/gi, '')
+    .trim();
+  
+  const words = cleaned.split(' ').filter(w => w.length > 0);
+  const abbreviated = words.slice(0, maxWords).join(' ');
+  
+  return toTitleCase(abbreviated);
+};
+
 // Funções de formatação baseadas no modo selecionado
 const formatCurrency = (value, displayMode) => {
   if (displayMode === 'k') {
@@ -348,7 +375,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                                   {format(new Date(transaction.date), "dd/MM")}
                                 </span>
                                 <span className="text-[9px] text-slate-900 truncate max-w-[70px]">
-                                  {transaction.description}
+                                  {formatDescription(transaction.description)}
                                 </span>
                               </div>
                             </td>
@@ -443,7 +470,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                                   {format(new Date(transaction.date), "dd/MM")}
                                 </span>
                                 <span className="text-[9px] text-slate-900 truncate max-w-[70px]">
-                                  {transaction.description}
+                                  {formatDescription(transaction.description)}
                                 </span>
                               </div>
                             </td>
@@ -595,7 +622,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
           {selectedTransaction && (
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-slate-600 mb-1">Descrição</p>
+                <p className="text-sm text-slate-600 mb-1">Descrição Completa</p>
                 <p className="font-medium text-slate-900">{selectedTransaction.description}</p>
               </div>
 
@@ -629,6 +656,13 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   <p className="font-medium text-slate-900 capitalize">
                     {selectedTransaction.payment_method.replace(/_/g, ' ')}
                   </p>
+                </div>
+              )}
+
+              {selectedTransaction.bank_account && (
+                <div>
+                  <p className="text-sm text-slate-600 mb-1">Conta Bancária</p>
+                  <p className="font-medium text-slate-900">{selectedTransaction.bank_account}</p>
                 </div>
               )}
 
