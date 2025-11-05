@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ import ExpandedTransactionList from "../components/dashboard/ExpandedTransaction
 import SpendingTrends from "../components/dashboard/SpendingTrends";
 import TopCategories from "../components/dashboard/TopCategories";
 import FinancialProjection from "../components/dashboard/FinancialProjection";
+import MonthlyAnalysisTable from "../components/dashboard/MonthlyAnalysisTable";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
@@ -221,16 +223,17 @@ export default function Dashboard() {
             </Alert>
           ) : (
             <>
-              {/* Tendências de gastos */}
+              {/* Nova tabela de análise mensal */}
+              <MonthlyAnalysisTable transactions={transactions} />
+
+              {/* Mantém os outros componentes abaixo */}
               <SpendingTrends transactions={transactions} />
 
-              {/* Top categorias */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <TopCategories transactions={filteredTransactions} type="expense" />
                 <TopCategories transactions={filteredTransactions} type="income" />
               </div>
 
-              {/* Projeção financeira */}
               <FinancialProjection
                 currentBalance={totalBalance}
                 transactions={transactions}
