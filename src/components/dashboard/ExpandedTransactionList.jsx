@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
@@ -30,13 +29,11 @@ const CATEGORY_NAMES = {
 };
 
 // Função para abreviar e formatar descrição
-const formatDescription = (description, maxWords = 4) => {
+const formatDescription = (description, maxWords = 3) => {
   if (!description) return '';
   
-  // Converte para Title Case (primeira letra maiúscula)
   const toTitleCase = (str) => {
     return str.toLowerCase().split(' ').map(word => {
-      // Mantém palavras pequenas em minúscula (de, da, do, e, a, o)
       if (['de', 'da', 'do', 'e', 'a', 'o', 'das', 'dos'].includes(word.toLowerCase())) {
         return word.toLowerCase();
       }
@@ -97,10 +94,10 @@ export default function ExpandedTransactionList({ transactions, type }) {
 
   return (
     <>
-      <div className={`ml-4 mt-2 rounded-lg ${
+      <div className={`ml-2 mt-2 rounded-lg ${
         type === 'income' ? 'bg-emerald-50/50' : 'bg-rose-50/50'
       }`}>
-        <div className="p-3 space-y-1">
+        <div className="p-2 space-y-1">
           {groupedByCategory.length === 0 ? (
             <div className="text-center py-4 text-slate-500 text-sm">
               Nenhuma transação encontrada
@@ -110,7 +107,7 @@ export default function ExpandedTransactionList({ transactions, type }) {
               <div key={group.category}>
                 {/* Linha da categoria */}
                 <div
-                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
                     expandedCategory === group.category
                       ? type === 'income' 
                         ? 'bg-emerald-100 hover:bg-emerald-100' 
@@ -119,17 +116,17 @@ export default function ExpandedTransactionList({ transactions, type }) {
                   }`}
                   onClick={() => toggleCategory(group.category)}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
                     {expandedCategory === group.category ? (
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                     )}
-                    <span className="font-medium text-slate-900 text-sm">
+                    <span className="font-medium text-slate-900 text-xs truncate">
                       {group.categoryName}
                     </span>
                   </div>
-                  <span className={`font-bold text-sm ${
+                  <span className={`font-bold text-xs flex-shrink-0 ml-2 ${
                     type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
                     R$ {formatCurrency(group.total)}
@@ -138,25 +135,25 @@ export default function ExpandedTransactionList({ transactions, type }) {
 
                 {/* Lista de transações da categoria */}
                 {expandedCategory === group.category && (
-                  <div className="ml-6 mt-1 space-y-1">
+                  <div className="ml-4 mt-1 space-y-0.5">
                     {group.transactions
                       .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
                       .map((transaction) => (
                         <div
                           key={transaction.id}
-                          className="flex items-center justify-between p-2 bg-white rounded-lg text-sm hover:bg-slate-50 cursor-pointer transition-colors group"
+                          className="flex items-center justify-between p-1.5 bg-white rounded text-xs hover:bg-slate-50 cursor-pointer transition-colors group"
                           onClick={() => setSelectedTransaction(transaction)}
                         >
-                          <div className="flex-1 flex items-center gap-3">
-                            <span className="text-xs text-slate-500 min-w-[70px]">
-                              {format(new Date(transaction.date), "dd/MM/yyyy")}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-slate-500 text-[10px] w-14 flex-shrink-0">
+                              {format(new Date(transaction.date), "dd/MM")}
                             </span>
-                            <span className="text-slate-900 flex-1">
+                            <span className="text-slate-900 text-xs truncate flex-1">
                               {formatDescription(transaction.description)}
                             </span>
-                            <Info className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Info className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                           </div>
-                          <span className={`font-semibold text-sm ml-4 ${
+                          <span className={`font-semibold text-xs flex-shrink-0 ml-2 ${
                             type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                           }`}>
                             R$ {formatCurrency(Math.abs(transaction.amount))}
