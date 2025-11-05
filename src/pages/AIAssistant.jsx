@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -220,7 +221,7 @@ Sempre que possível, mencione valores e percentuais específicos dos dados do u
   return (
     <div className="p-6 md:p-8 h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
             <Brain className="w-6 h-6 text-white" />
@@ -236,51 +237,33 @@ Sempre que possível, mencione valores e percentuais específicos dos dados do u
         </div>
       </div>
 
-      {/* Benefícios - só mostra se não tiver mensagens */}
+      {/* Benefícios - compactos */}
       {messages.length === 0 && (
-        <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="border-purple-200 bg-purple-50">
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-purple-900 mb-1">Insights Personalizados</h3>
-                  <p className="text-sm text-purple-700">
-                    Análise baseada nos seus dados reais
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <Sparkles className="w-5 h-5 text-purple-600 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-purple-900 text-sm">Insights Personalizados</h3>
+                <p className="text-xs text-purple-700">Análise dos seus dados reais</p>
+              </div>
+            </div>
 
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-blue-900 mb-1">Recomendações Práticas</h3>
-                  <p className="text-sm text-blue-700">
-                    Ações específicas para melhorar seu caixa
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <TrendingUp className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-blue-900 text-sm">Recomendações Práticas</h3>
+                <p className="text-xs text-blue-700">Ações para melhorar seu caixa</p>
+              </div>
+            </div>
 
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="p-4 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-green-900 mb-1">100% Privado</h3>
-                  <p className="text-sm text-green-700">
-                    Seus dados financeiros são seguros
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+              <Shield className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-green-900 text-sm">100% Privado</h3>
+                <p className="text-xs text-green-700">Dados financeiros seguros</p>
+              </div>
+            </div>
           </div>
 
           {transactions.length === 0 && (
