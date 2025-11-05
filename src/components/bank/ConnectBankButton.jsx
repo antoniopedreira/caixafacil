@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Loader2, Link as LinkIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -7,16 +7,16 @@ import { base44 } from "@/api/base44Client";
 export default function ConnectBankButton({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  const loadPluggyScript = () => {
-    return new Promise((resolve, reject) => {
-      // Verifica se já está carregado
+  // Pré-carrega o script do Pluggy quando o componente é montado
+  useEffect(() => {
+    const loadScript = () => {
       if (window.PluggyConnect) {
-        resolve();
+        setScriptLoaded(true);
         return;
       }
 
-      // Remove script antigo se existir
       const existingScript = document.querySelector('script[src*="pluggy-connect"]');
       if (existingScript) {
         existingScript.remove();
@@ -27,56 +27,76 @@ export default function ConnectBankButton({ onSuccess }) {
       script.async = true;
       
       script.onload = () => {
-        console.log('Script do Pluggy carregado com sucesso');
-        // Aguarda um pouco para garantir que o PluggyConnect está disponível
+        console.log('✅ Script do Pluggy carregado');
         setTimeout(() => {
           if (window.PluggyConnect) {
-            resolve();
-          } else {
-            reject(new Error('PluggyConnect não disponível após carregar script'));
+            setScriptLoaded(true);
           }
-        }, 100);
+        }, 200);
       };
       
-      script.onerror = (error) => {
-        console.error('Erro ao carregar script:', error);
-        reject(new Error('Falha ao carregar o widget do Pluggy'));
+      script.onerror = () => {
+        console.error('❌ Falha ao carregar script do Pluggy');
+        setError('Não foi possível carregar o componente de conexão bancária. Verifique sua internet.');
       };
 
       document.head.appendChild(script);
-    });
-  };
+    };
+
+    loadScript();
+  }, []);
 
   const connectBank = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log('1. Solicitando token do Pluggy...');
+      console.log('🔄 1. Solicitando token...');
       
       const response = await base44.functions.invoke('createPluggyConnectToken', {});
       
-      console.log('2. Resposta recebida:', response.data);
+      console.log('📦 2. Resposta:', response.data);
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Erro ao criar token de conexão');
+        throw new Error(response.data.error || 'Erro ao criar token');
       }
 
-      console.log('3. Carregando widget do Pluggy...');
+      if (!response.data.accessToken) {
+        throw new Error('Token de acesso não foi retornado');
+      }
 
-      await loadPluggyScript();
+      console.log('✅ 3. Token obtido');
 
-      console.log('4. Widget carregado, inicializando...');
+      // Aguarda o script estar carregado
+      if (!window.PluggyConnect) {
+        console.log('⏳ Aguardando script...');
+        await new Promise((resolve) => {
+          const checkInterval = setInterval(() => {
+            if (window.PluggyConnect) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100);
+          
+          // Timeout de 10 segundos
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve();
+          }, 10000);
+        });
+      }
 
       if (!window.PluggyConnect) {
-        throw new Error('Widget do Pluggy não está disponível');
+        throw new Error('O componente Pluggy não carregou. Recarregue a página e tente novamente.');
       }
+
+      console.log('🚀 4. Inicializando widget...');
 
       const pluggyConnect = new window.PluggyConnect({
         connectToken: response.data.accessToken,
-        includeSandbox: true,
+        includeSandbox: true, // Altere para false para usar bancos reais
         onSuccess: async (itemData) => {
-          console.log('5. Banco conectado com sucesso:', itemData);
+          console.log('✅ Banco conectado!', itemData);
           
           if (onSuccess) {
             await onSuccess(itemData);
@@ -85,33 +105,31 @@ export default function ConnectBankButton({ onSuccess }) {
           setLoading(false);
         },
         onError: (error) => {
-          console.error('Erro no widget do Pluggy:', error);
-          setError('Erro ao conectar banco: ' + (error.message || 'Tente novamente'));
+          console.error('❌ Erro no widget:', error);
+          setError('Erro ao conectar: ' + (error?.message || 'Tente novamente'));
           setLoading(false);
         },
         onClose: () => {
-          console.log('Widget fechado pelo usuário');
+          console.log('👋 Widget fechado');
           setLoading(false);
         },
       });
 
-      console.log('5. Abrindo widget...');
+      console.log('📱 5. Abrindo widget...');
       pluggyConnect.init();
       
     } catch (err) {
-      console.error('Erro completo:', err);
+      console.error('❌ Erro:', err);
       
       let errorMessage = 'Erro ao conectar banco';
       
       if (err?.message) {
         if (err.message.includes('inválidas') || err.message.includes('Credenciais')) {
-          errorMessage = 'Credenciais do Pluggy inválidas. Verifique PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET.';
-        } else if (err.message.includes('não configuradas')) {
-          errorMessage = 'Configure as credenciais do Pluggy (PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET).';
-        } else if (err.message.includes('widget') || err.message.includes('script')) {
-          errorMessage = 'Erro ao carregar componente de conexão. Verifique sua conexão com a internet e tente novamente.';
-        } else if (err.message.includes('disponível')) {
-          errorMessage = 'Componente de conexão não carregou. Recarregue a página e tente novamente.';
+          errorMessage = 'Credenciais do Pluggy inválidas. Verifique as configurações.';
+        } else if (err.message.includes('não carregou') || err.message.includes('componente')) {
+          errorMessage = 'Componente não carregou. Recarregue a página (F5) e tente novamente.';
+        } else if (err.message.includes('Token')) {
+          errorMessage = 'Falha ao obter token de conexão. Verifique as credenciais do Pluggy.';
         } else {
           errorMessage = err.message;
         }
@@ -124,9 +142,18 @@ export default function ConnectBankButton({ onSuccess }) {
 
   return (
     <div className="space-y-4">
+      {!scriptLoaded && !error && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <AlertDescription className="text-blue-900 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Carregando componente de conexão...
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Button
         onClick={connectBank}
-        disabled={loading}
+        disabled={loading || !scriptLoaded}
         className="bg-blue-600 hover:bg-blue-700 w-full"
         size="lg"
       >
