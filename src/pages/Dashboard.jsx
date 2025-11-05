@@ -113,12 +113,8 @@ export default function Dashboard() {
     return (
       <div className="p-6 md:p-8 space-y-6">
         <Skeleton className="h-48 w-full" />
-        <div className="grid grid-cols-3 gap-3">
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
-        </div>
-        <Skeleton className="h-64" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -163,7 +159,7 @@ export default function Dashboard() {
           expandedCard={expandedCard}
         />
         
-        {expandedCard === 'income' && (
+        {expandedCard === 'income' && incomeTransactions.length > 0 && (
           <ExpandedTransactionList
             transactions={incomeTransactions}
             type="income"
@@ -171,7 +167,7 @@ export default function Dashboard() {
           />
         )}
         
-        {expandedCard === 'expense' && (
+        {expandedCard === 'expense' && expenseTransactions.length > 0 && (
           <ExpandedTransactionList
             transactions={expenseTransactions}
             type="expense"

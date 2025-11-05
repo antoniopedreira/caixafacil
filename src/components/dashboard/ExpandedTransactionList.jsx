@@ -34,7 +34,7 @@ export default function ExpandedTransactionList({ transactions, type, onClose })
       if (!groups[t.category]) {
         groups[t.category] = {
           category: t.category,
-          categoryName: CATEGORY_NAMES[t.category],
+          categoryName: CATEGORY_NAMES[t.category] || t.category,
           total: 0,
           transactions: []
         };
@@ -165,7 +165,7 @@ export default function ExpandedTransactionList({ transactions, type, onClose })
                           {transaction.description}
                         </p>
                         <Badge variant="outline" className="text-xs mt-1">
-                          {CATEGORY_NAMES[transaction.category]}
+                          {CATEGORY_NAMES[transaction.category] || transaction.category}
                         </Badge>
                       </div>
                     </div>
@@ -207,7 +207,7 @@ export default function ExpandedTransactionList({ transactions, type, onClose })
                           {transaction.description}
                         </p>
                         <Badge variant="outline" className="text-xs mt-1">
-                          {CATEGORY_NAMES[transaction.category]}
+                          {CATEGORY_NAMES[transaction.category] || transaction.category}
                         </Badge>
                       </div>
                     </div>

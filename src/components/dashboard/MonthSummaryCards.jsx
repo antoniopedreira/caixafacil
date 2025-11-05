@@ -4,12 +4,11 @@ import { ChevronRight } from "lucide-react";
 
 export default function MonthSummaryCards({ income, expense, balance, onClickIncome, onClickExpense, expandedCard }) {
   return (
-    <Card className="border-0 shadow-md bg-white col-span-full">
+    <Card className="border-0 shadow-md bg-white">
       <div className="p-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Entradas e saídas</h3>
         
         <div className="space-y-3">
-          {/* Entradas */}
           <div 
             className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all ${
               expandedCard === 'income' 
@@ -27,7 +26,6 @@ export default function MonthSummaryCards({ income, expense, balance, onClickInc
             </div>
           </div>
 
-          {/* Saídas */}
           <div 
             className={`flex items-center justify-between p-4 rounded-lg cursor-pointer transition-all ${
               expandedCard === 'expense' 
@@ -45,7 +43,6 @@ export default function MonthSummaryCards({ income, expense, balance, onClickInc
             </div>
           </div>
 
-          {/* Resultado do período */}
           <div className="border-t pt-3 mt-2">
             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
               <span className="text-slate-900 font-semibold">Resultado do período</span>
