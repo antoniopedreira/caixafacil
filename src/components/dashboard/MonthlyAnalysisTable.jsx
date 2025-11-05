@@ -46,20 +46,17 @@ const formatDescription = (description, maxChars = 20) => {
     }).join(' ');
   };
   
-  // Remove frases como "recebido de", "enviado para", etc
   let cleaned = description
     .replace(/recebido\s+de\s+/gi, '')
     .replace(/enviado\s+para\s+/gi, '')
     .replace(/recebido\s+/gi, '')
     .replace(/enviado\s+/gi, '')
-    .replace(/pagamento\s+/gi, 'Pag ')  // Substitui "Pagamento" por "Pag"
+    .replace(/pagamento\s+/gi, 'Pag ')
     .replace(/transferencia\s+/gi, 'Transf ')
     .trim();
   
-  // Aplica Title Case
   cleaned = toTitleCase(cleaned);
   
-  // Se ainda está muito grande, trunca
   if (cleaned.length > maxChars) {
     cleaned = cleaned.substring(0, maxChars) + '...';
   }
@@ -85,6 +82,7 @@ const formatCurrencyFull = (value) => {
   }).format(Math.round(value));
 };
 
+// Função para gerar análise
 const generateAnalysis = (data) => {
   if (data.length < 2) return null;
   
@@ -116,7 +114,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
   const [showMonths, setShowMonths] = useState(6);
   const [displayMode, setDisplayMode] = useState('normal');
   const [expandedRow, setExpandedRow] = useState(null);
-  const [expandedCategory, setExpandedCategory] = useState(null); // Para expandir categorias
+  const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedMonthTransactions, setSelectedMonthTransactions] = useState(null);
 
   const { monthsData, lastUpdateDate, analysis, allCategories } = useMemo(() => {
@@ -173,11 +171,11 @@ export default function MonthlyAnalysisTable({ transactions }) {
     const expenseCategoriesTotal = {};
     
     data.forEach(month => {
-      Object.entries(month.incomeByCategory).forEach(([cat, data]) => {
-        incomeCategoriesTotal[cat] = (incomeCategoriesTotal[cat] || 0) + data.total;
+      Object.entries(month.incomeByCategory).forEach(([cat, categoryData]) => {
+        incomeCategoriesTotal[cat] = (incomeCategoriesTotal[cat] || 0) + categoryData.total;
       });
-      Object.entries(month.expenseByCategory).forEach(([cat, data]) => {
-        expenseCategoriesTotal[cat] = (expenseCategoriesTotal[cat] || 0) + data.total;
+      Object.entries(month.expenseByCategory).forEach(([cat, categoryData]) => {
+        expenseCategoriesTotal[cat] = (expenseCategoriesTotal[cat] || 0) + categoryData.total;
       });
     });
     
@@ -202,12 +200,10 @@ export default function MonthlyAnalysisTable({ transactions }) {
     };
   }, [transactions, showMonths]);
 
-  // Agrupa transações por descrição formatada
   const groupedTransactionsByDescription = useMemo(() => {
     const grouped = {};
     
     monthsData.forEach((month, monthIdx) => {
-      // Processa entradas
       Object.entries(month.incomeByCategory).forEach(([category, data]) => {
         data.transactions.forEach(transaction => {
           const formattedDesc = formatDescription(transaction.description, 20);
@@ -236,7 +232,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
         });
       });
       
-      // Processa saídas
       Object.entries(month.expenseByCategory).forEach(([category, data]) => {
         data.transactions.forEach(transaction => {
           const formattedDesc = formatDescription(transaction.description, 20);
@@ -272,10 +267,10 @@ export default function MonthlyAnalysisTable({ transactions }) {
   const toggleRow = (rowType) => {
     if (expandedRow === rowType) {
       setExpandedRow(null);
-      setExpandedCategory(null); // Fecha todas as categorias ao fechar a linha
+      setExpandedCategory(null);
     } else {
       setExpandedRow(rowType);
-      setExpandedCategory(null); // Não expande nenhuma categoria por padrão
+      setExpandedCategory(null);
     }
   };
 
@@ -290,11 +285,10 @@ export default function MonthlyAnalysisTable({ transactions }) {
     });
   };
 
-  // Define largura das colunas baseado no modo de visualização
   const getColumnWidth = () => {
-    if (displayMode === 'normal') return 'w-24'; // 96px - cabe 3 meses
-    if (displayMode === 'k') return 'w-20'; // 80px - mais compacto
-    if (displayMode === 'M') return 'w-20'; // 80px - mais compacto
+    if (displayMode === 'normal') return 'w-24';
+    if (displayMode === 'k') return 'w-20';
+    if (displayMode === 'M') return 'w-20';
     return 'w-24';
   };
 
@@ -305,7 +299,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <CardTitle className="text-lg">Análise Mensal Comparativa</CardTitle>
             <div className="flex flex-wrap items-center gap-3">
-              {/* Filtro de Visualização */}
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-slate-700">Visualização:</span>
                 <Select value={displayMode} onValueChange={setDisplayMode}>
@@ -320,7 +313,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                 </Select>
               </div>
 
-              {/* Filtro de Meses */}
               <div className="flex items-center gap-2">
                 <Button
                   variant={showMonths === 6 ? "default" : "outline"}
@@ -350,7 +342,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
             </div>
           </div>
 
-          {/* Tabela horizontal ultra compacta */}
           <div className="overflow-x-auto">
             <table className="w-full border-separate border-spacing-0">
               <thead>
@@ -377,7 +368,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                 </tr>
               </thead>
               <tbody>
-                {/* Linha de Entradas */}
                 <tr className={`border-b border-slate-100 hover:bg-emerald-50 cursor-pointer transition-colors ${
                   expandedRow === 'income' ? 'bg-emerald-50' : ''
                 }`}>
@@ -403,7 +393,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   ))}
                 </tr>
 
-                {/* Detalhamento de Entradas - Categorias retraídas por padrão */}
                 {expandedRow === 'income' && allCategories.income.map((category) => {
                   const categoryTransactions = Object.entries(groupedTransactionsByDescription)
                     .filter(([key, data]) => data.type === 'income' && data.category === category)
@@ -442,7 +431,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         ))}
                       </tr>
 
-                      {/* Linhas de transações - só aparecem se categoria estiver expandida */}
                       {expandedCategory === `income-${category}` && categoryTransactions.map(([key, data]) => (
                         <tr key={key} className="border-b border-slate-50 hover:bg-emerald-100/30">
                           <td className="p-1 pl-7 sticky left-0 bg-white z-10 border-r border-slate-100">
@@ -473,7 +461,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   );
                 })}
 
-                {/* Linha de Saídas */}
                 <tr className={`border-b border-slate-100 hover:bg-rose-50 cursor-pointer transition-colors ${
                   expandedRow === 'expense' ? 'bg-rose-50' : ''
                 }`}>
@@ -499,7 +486,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   ))}
                 </tr>
 
-                {/* Detalhamento de Saídas - Categorias retraídas por padrão */}
                 {expandedRow === 'expense' && allCategories.expense.map((category) => {
                   const categoryTransactions = Object.entries(groupedTransactionsByDescription)
                     .filter(([key, data]) => data.type === 'expense' && data.category === category)
@@ -538,7 +524,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         ))}
                       </tr>
 
-                      {/* Linhas de transações - só aparecem se categoria estiver expandida */}
                       {expandedCategory === `expense-${category}` && categoryTransactions.map(([key, data]) => (
                         <tr key={key} className="border-b border-slate-50 hover:bg-rose-100/30">
                           <td className="p-1 pl-7 sticky left-0 bg-white z-10 border-r border-slate-100">
@@ -569,7 +554,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   );
                 })}
 
-                {/* Linha de Resultado do Período */}
                 <tr className="border-t-2 border-slate-300 bg-slate-50">
                   <td className="p-1.5 font-bold text-slate-900 sticky left-0 bg-slate-50 z-10 border-r border-slate-200 text-xs">
                     Resultado
@@ -590,7 +574,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
         </CardContent>
       </Card>
 
-      {/* Análise automática */}
       {analysis && (
         <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-blue-50">
           <CardHeader>
@@ -693,7 +676,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
         </Card>
       )}
 
-      {/* Modal de detalhes das transações do mês */}
       <Dialog open={!!selectedMonthTransactions} onOpenChange={() => setSelectedMonthTransactions(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
