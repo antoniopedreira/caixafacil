@@ -31,11 +31,23 @@ const CATEGORY_NAMES = {
   outras_despesas: "Outras Despesas"
 };
 
+// Formata valor SEM decimais e mais compacto
 const formatCurrency = (value) => {
+  if (value >= 1000000) {
+    return (value / 1000000).toFixed(1) + 'M';
+  }
+  if (value >= 1000) {
+    return (value / 1000).toFixed(0) + 'k';
+  }
+  return Math.round(value).toString();
+};
+
+// Formata valor completo sem decimais
+const formatCurrencyFull = (value) => {
   return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Math.round(value));
 };
 
 const generateAnalysis = (data) => {
@@ -121,16 +133,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
       });
     }
     
-    // Coleta todas as categorias únicas de income e expense
-    const incomeCategoriesSet = new Set();
-    const expenseCategoriesSet = new Set();
-    
-    data.forEach(month => {
-      Object.keys(month.incomeByCategory).forEach(cat => incomeCategoriesSet.add(cat));
-      Object.keys(month.expenseByCategory).forEach(cat => expenseCategoriesSet.add(cat));
-    });
-    
-    // Ordena categorias pelo total geral (soma de todos os meses)
     const incomeCategoriesTotal = {};
     const expenseCategoriesTotal = {};
     
@@ -212,24 +214,24 @@ export default function MonthlyAnalysisTable({ transactions }) {
             </div>
           </div>
 
-          {/* Tabela horizontal */}
+          {/* Tabela horizontal ultra compacta */}
           <div className="overflow-x-auto">
             <table className="w-full border-separate border-spacing-0">
               <thead>
                 <tr className="border-b-2 border-slate-200">
-                  <th className="text-left p-2 font-semibold text-slate-900 sticky left-0 bg-white z-20 min-w-[140px]">
+                  <th className="text-left p-1.5 font-semibold text-slate-900 sticky left-0 bg-white z-20 w-24">
                     
                   </th>
                   {monthsData.map((month, index) => (
-                    <th key={index} className="p-2 text-center min-w-[100px]">
+                    <th key={index} className="p-1 text-center w-20">
                       <div className={`${
                         month.isCurrentMonth 
-                          ? 'bg-blue-100 text-blue-900 font-bold rounded-lg p-1.5' 
+                          ? 'bg-blue-100 text-blue-900 font-bold rounded p-1' 
                           : 'text-slate-700'
                       }`}>
-                        <div className="text-xs">{month.month}</div>
+                        <div className="text-[10px] leading-tight">{month.month}</div>
                         {month.isCurrentMonth && (
-                          <Badge className="bg-blue-600 text-white text-[10px] mt-0.5 px-1 py-0">
+                          <Badge className="bg-blue-600 text-white text-[8px] mt-0.5 px-1 py-0 h-3">
                             Atual
                           </Badge>
                         )}
@@ -244,21 +246,21 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   expandedRow === 'income' ? 'bg-emerald-50' : ''
                 }`}>
                   <td 
-                    className="p-2 font-semibold text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-100"
+                    className="p-1.5 font-semibold text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-100"
                     onClick={() => toggleRow('income')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       {expandedRow === 'income' ? (
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                        <ChevronDown className="w-3 h-3 text-slate-400" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-3 h-3 text-slate-400" />
                       )}
-                      <span className="text-emerald-700 text-sm">Entradas</span>
+                      <span className="text-emerald-700 text-xs">Entradas</span>
                     </div>
                   </td>
                   {monthsData.map((month, index) => (
-                    <td key={index} className="p-2 text-center">
-                      <div className="font-bold text-emerald-600 text-sm">
+                    <td key={index} className="p-1 text-center">
+                      <div className="font-bold text-emerald-600 text-xs whitespace-nowrap">
                         R$ {formatCurrency(month.income)}
                       </div>
                     </td>
@@ -270,28 +272,28 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   <React.Fragment key={category}>
                     <tr className="border-b border-slate-50 hover:bg-emerald-50/50 cursor-pointer">
                       <td 
-                        className="p-2 pl-8 sticky left-0 bg-emerald-50/80 z-10 border-r border-slate-100"
+                        className="p-1 pl-6 sticky left-0 bg-emerald-50/80 z-10 border-r border-slate-100"
                         onClick={() => toggleCategory(`income-${category}`)}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           {expandedCategory === `income-${category}` ? (
-                            <ChevronDown className="w-3 h-3 text-slate-400" />
+                            <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
                           ) : (
-                            <ChevronRight className="w-3 h-3 text-slate-400" />
+                            <ChevronRight className="w-2.5 h-2.5 text-slate-400" />
                           )}
-                          <span className="text-xs font-medium text-slate-900">
+                          <span className="text-[10px] font-medium text-slate-900 truncate">
                             {CATEGORY_NAMES[category] || category}
                           </span>
                         </div>
                       </td>
                       {monthsData.map((month, idx) => (
-                        <td key={idx} className="p-2 text-center bg-emerald-50/50">
+                        <td key={idx} className="p-1 text-center bg-emerald-50/50">
                           {month.incomeByCategory[category] ? (
-                            <span className="text-xs font-semibold text-emerald-700">
+                            <span className="text-[10px] font-semibold text-emerald-700 whitespace-nowrap">
                               R$ {formatCurrency(month.incomeByCategory[category].total)}
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-300">-</span>
+                            <span className="text-[10px] text-slate-300">-</span>
                           )}
                         </td>
                       ))}
@@ -309,20 +311,20 @@ export default function MonthlyAnalysisTable({ transactions }) {
                             className="border-b border-slate-50 hover:bg-emerald-100/50 cursor-pointer"
                             onClick={() => setSelectedTransaction(transaction)}
                           >
-                            <td className="p-1.5 pl-12 sticky left-0 bg-white z-10 border-r border-slate-100">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-500">
+                            <td className="p-1 pl-8 sticky left-0 bg-white z-10 border-r border-slate-100">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] text-slate-500">
                                   {format(new Date(transaction.date), "dd/MM")}
                                 </span>
-                                <span className="text-[10px] text-slate-900 truncate max-w-[90px]">
+                                <span className="text-[9px] text-slate-900 truncate max-w-[70px]">
                                   {transaction.description}
                                 </span>
                               </div>
                             </td>
                             {monthsData.map((_, idx) => (
-                              <td key={idx} className="p-1.5 text-center bg-white">
+                              <td key={idx} className="p-1 text-center bg-white">
                                 {idx === monthIdx && (
-                                  <span className="text-[10px] font-semibold text-emerald-600">
+                                  <span className="text-[9px] font-semibold text-emerald-600 whitespace-nowrap">
                                     R$ {formatCurrency(Math.abs(transaction.amount))}
                                   </span>
                                 )}
@@ -339,21 +341,21 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   expandedRow === 'expense' ? 'bg-rose-50' : ''
                 }`}>
                   <td 
-                    className="p-2 font-semibold text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-100"
+                    className="p-1.5 font-semibold text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-100"
                     onClick={() => toggleRow('expense')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       {expandedRow === 'expense' ? (
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                        <ChevronDown className="w-3 h-3 text-slate-400" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                        <ChevronRight className="w-3 h-3 text-slate-400" />
                       )}
-                      <span className="text-rose-700 text-sm">Saídas</span>
+                      <span className="text-rose-700 text-xs">Saídas</span>
                     </div>
                   </td>
                   {monthsData.map((month, index) => (
-                    <td key={index} className="p-2 text-center">
-                      <div className="font-bold text-rose-600 text-sm">
+                    <td key={index} className="p-1 text-center">
+                      <div className="font-bold text-rose-600 text-xs whitespace-nowrap">
                         R$ {formatCurrency(month.expense)}
                       </div>
                     </td>
@@ -365,28 +367,28 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   <React.Fragment key={category}>
                     <tr className="border-b border-slate-50 hover:bg-rose-50/50 cursor-pointer">
                       <td 
-                        className="p-2 pl-8 sticky left-0 bg-rose-50/80 z-10 border-r border-slate-100"
+                        className="p-1 pl-6 sticky left-0 bg-rose-50/80 z-10 border-r border-slate-100"
                         onClick={() => toggleCategory(`expense-${category}`)}
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           {expandedCategory === `expense-${category}` ? (
-                            <ChevronDown className="w-3 h-3 text-slate-400" />
+                            <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
                           ) : (
-                            <ChevronRight className="w-3 h-3 text-slate-400" />
+                            <ChevronRight className="w-2.5 h-2.5 text-slate-400" />
                           )}
-                          <span className="text-xs font-medium text-slate-900">
+                          <span className="text-[10px] font-medium text-slate-900 truncate">
                             {CATEGORY_NAMES[category] || category}
                           </span>
                         </div>
                       </td>
                       {monthsData.map((month, idx) => (
-                        <td key={idx} className="p-2 text-center bg-rose-50/50">
+                        <td key={idx} className="p-1 text-center bg-rose-50/50">
                           {month.expenseByCategory[category] ? (
-                            <span className="text-xs font-semibold text-rose-700">
+                            <span className="text-[10px] font-semibold text-rose-700 whitespace-nowrap">
                               R$ {formatCurrency(month.expenseByCategory[category].total)}
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-300">-</span>
+                            <span className="text-[10px] text-slate-300">-</span>
                           )}
                         </td>
                       ))}
@@ -404,20 +406,20 @@ export default function MonthlyAnalysisTable({ transactions }) {
                             className="border-b border-slate-50 hover:bg-rose-100/50 cursor-pointer"
                             onClick={() => setSelectedTransaction(transaction)}
                           >
-                            <td className="p-1.5 pl-12 sticky left-0 bg-white z-10 border-r border-slate-100">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-500">
+                            <td className="p-1 pl-8 sticky left-0 bg-white z-10 border-r border-slate-100">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] text-slate-500">
                                   {format(new Date(transaction.date), "dd/MM")}
                                 </span>
-                                <span className="text-[10px] text-slate-900 truncate max-w-[90px]">
+                                <span className="text-[9px] text-slate-900 truncate max-w-[70px]">
                                   {transaction.description}
                                 </span>
                               </div>
                             </td>
                             {monthsData.map((_, idx) => (
-                              <td key={idx} className="p-1.5 text-center bg-white">
+                              <td key={idx} className="p-1 text-center bg-white">
                                 {idx === monthIdx && (
-                                  <span className="text-[10px] font-semibold text-rose-600">
+                                  <span className="text-[9px] font-semibold text-rose-600 whitespace-nowrap">
                                     R$ {formatCurrency(Math.abs(transaction.amount))}
                                   </span>
                                 )}
@@ -431,12 +433,12 @@ export default function MonthlyAnalysisTable({ transactions }) {
 
                 {/* Linha de Resultado do Período */}
                 <tr className="border-t-2 border-slate-300 bg-slate-50">
-                  <td className="p-2 font-bold text-slate-900 sticky left-0 bg-slate-50 z-10 border-r border-slate-200 text-sm">
-                    Resultado do Período
+                  <td className="p-1.5 font-bold text-slate-900 sticky left-0 bg-slate-50 z-10 border-r border-slate-200 text-xs">
+                    Resultado
                   </td>
                   {monthsData.map((month, index) => (
-                    <td key={index} className="p-2 text-center">
-                      <div className={`font-bold text-base ${
+                    <td key={index} className="p-1 text-center">
+                      <div className={`font-bold text-xs whitespace-nowrap ${
                         month.balance >= 0 ? 'text-blue-600' : 'text-rose-600'
                       }`}>
                         R$ {formatCurrency(month.balance)}
@@ -476,7 +478,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   </Badge>
                 </div>
                 <p className="text-xs text-slate-600 mt-2">
-                  De R$ {formatCurrency(analysis.previousMonth.income)} para R$ {formatCurrency(analysis.currentMonth.income)}
+                  De R$ {formatCurrencyFull(analysis.previousMonth.income)} para R$ {formatCurrencyFull(analysis.currentMonth.income)}
                 </p>
               </div>
 
@@ -495,7 +497,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   </Badge>
                 </div>
                 <p className="text-xs text-slate-600 mt-2">
-                  De R$ {formatCurrency(analysis.previousMonth.expense)} para R$ {formatCurrency(analysis.currentMonth.expense)}
+                  De R$ {formatCurrencyFull(analysis.previousMonth.expense)} para R$ {formatCurrencyFull(analysis.currentMonth.expense)}
                 </p>
               </div>
             </div>
@@ -517,7 +519,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         </span>
                       </div>
                       <span className="text-sm font-bold text-rose-600">
-                        R$ {formatCurrency(data.total)}
+                        R$ {formatCurrencyFull(data.total)}
                       </span>
                     </div>
                   ))}
@@ -578,7 +580,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   <p className={`font-bold ${
                     selectedTransaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
-                    R$ {formatCurrency(Math.abs(selectedTransaction.amount))}
+                    R$ {formatCurrencyFull(Math.abs(selectedTransaction.amount))}
                   </p>
                 </div>
               </div>
