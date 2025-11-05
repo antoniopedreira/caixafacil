@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Loader2, Link as LinkIcon } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { base44 } from "@/api/base44Client";
 
 export default function ConnectBankButton({ onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -12,18 +13,11 @@ export default function ConnectBankButton({ onSuccess }) {
     setError(null);
 
     try {
-      // Solicita token de acesso do backend
-      const response = await fetch('/api/backend-functions/createPluggyConnectToken', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Solicita token de acesso do backend usando o SDK
+      const response = await base44.functions.invoke('createPluggyConnectToken', {});
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Erro ao criar token de conexão');
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Erro ao criar token de conexão');
       }
 
       // Carrega o Widget do Pluggy
@@ -41,8 +35,8 @@ export default function ConnectBankButton({ onSuccess }) {
 
       // Inicializa o Widget
       const pluggyConnect = new window.PluggyConnect({
-        connectToken: data.accessToken,
-        includeSandbox: false, // Coloque true apenas para testes
+        connectToken: response.data.accessToken,
+        includeSandbox: true, // Coloque true para testes
         onSuccess: async (itemData) => {
           console.log('Banco conectado:', itemData);
           
@@ -64,8 +58,14 @@ export default function ConnectBankButton({ onSuccess }) {
 
       pluggyConnect.init();
     } catch (err) {
-      console.error('Erro:', err);
-      setError(err.message);
+      console.error('Erro completo:', err);
+      let errorMessage = err.message;
+      
+      if (errorMessage.includes('configuradas')) {
+        errorMessage = 'Credenciais do Pluggy não configuradas. Configure PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET nas variáveis de ambiente.';
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };

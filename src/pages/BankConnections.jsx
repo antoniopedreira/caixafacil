@@ -50,21 +50,13 @@ export default function BankConnections() {
 
   const syncMutation = useMutation({
     mutationFn: async (connectionId) => {
-      const response = await fetch('/api/backend-functions/syncPluggyTransactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ connectionId }),
-      });
+      const response = await base44.functions.invoke('syncPluggyTransactions', { connectionId });
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Erro ao sincronizar');
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Erro ao sincronizar');
       }
 
-      return data;
+      return response.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bank-connections'] });
@@ -91,18 +83,10 @@ export default function BankConnections() {
       }
       
       // Deleta no Pluggy
-      const response = await fetch('/api/backend-functions/deletePluggyItem', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ itemId: connection.pluggy_item_id }),
-      });
+      const response = await base44.functions.invoke('deletePluggyItem', { itemId: connection.pluggy_item_id });
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        console.warn('Erro ao deletar no Pluggy:', data.error);
+      if (!response.data.success) {
+        console.warn('Erro ao deletar no Pluggy:', response.data.error);
         // Continua mesmo assim para deletar localmente
       }
 
