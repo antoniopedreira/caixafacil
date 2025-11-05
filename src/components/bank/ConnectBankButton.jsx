@@ -13,12 +13,26 @@ export default function ConnectBankButton({ onSuccess }) {
     setError(null);
 
     try {
+      console.log('Solicitando token do Pluggy...');
+      
       // Solicita token de acesso do backend usando o SDK
       const response = await base44.functions.invoke('createPluggyConnectToken', {});
+      
+      console.log('Resposta recebida:', response.data);
 
       if (!response.data.success) {
-        throw new Error(response.data.error || 'Erro ao criar token de conexão');
+        const errorMsg = response.data.error || 'Erro ao criar token de conexão';
+        console.error('Erro na resposta:', errorMsg);
+        
+        // Mostra detalhes técnicos se houver
+        if (response.data.details) {
+          console.error('Detalhes:', response.data.details);
+        }
+        
+        throw new Error(errorMsg);
       }
+
+      console.log('Token obtido, carregando widget do Pluggy...');
 
       // Carrega o Widget do Pluggy
       if (!window.PluggyConnect) {
@@ -29,16 +43,18 @@ export default function ConnectBankButton({ onSuccess }) {
 
         await new Promise((resolve, reject) => {
           script.onload = resolve;
-          script.onerror = reject;
+          script.onerror = () => reject(new Error('Falha ao carregar widget do Pluggy'));
         });
       }
+
+      console.log('Inicializando widget do Pluggy...');
 
       // Inicializa o Widget
       const pluggyConnect = new window.PluggyConnect({
         connectToken: response.data.accessToken,
         includeSandbox: true,
         onSuccess: async (itemData) => {
-          console.log('Banco conectado:', itemData);
+          console.log('Banco conectado com sucesso:', itemData);
           
           if (onSuccess) {
             await onSuccess(itemData);
@@ -47,22 +63,35 @@ export default function ConnectBankButton({ onSuccess }) {
           setLoading(false);
         },
         onError: (error) => {
-          console.error('Erro no widget:', error);
+          console.error('Erro no widget do Pluggy:', error);
           setError('Erro ao conectar banco. Tente novamente.');
           setLoading(false);
         },
         onClose: () => {
+          console.log('Widget fechado pelo usuário');
           setLoading(false);
         },
       });
 
       pluggyConnect.init();
+      console.log('Widget inicializado');
+      
     } catch (err) {
       console.error('Erro completo:', err);
-      let errorMessage = err?.message || 'Erro desconhecido ao conectar banco';
       
-      if (errorMessage && errorMessage.includes('configuradas')) {
-        errorMessage = 'Credenciais do Pluggy não configuradas. Configure PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET nas variáveis de ambiente.';
+      let errorMessage = 'Erro desconhecido ao conectar banco';
+      
+      if (err?.message) {
+        errorMessage = err.message;
+        
+        // Mensagens mais amigáveis
+        if (err.message.includes('inválidas')) {
+          errorMessage = 'As credenciais do Pluggy estão incorretas. Verifique o Client ID e Client Secret nas configurações.';
+        } else if (err.message.includes('não configuradas')) {
+          errorMessage = 'Configure as credenciais do Pluggy (PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET) nas variáveis de ambiente.';
+        } else if (err.message.includes('widget')) {
+          errorMessage = 'Falha ao carregar o widget de conexão. Verifique sua conexão com a internet.';
+        }
       }
       
       setError(errorMessage);
@@ -93,7 +122,7 @@ export default function ConnectBankButton({ onSuccess }) {
 
       {error && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="text-sm">{error}</AlertDescription>
         </Alert>
       )}
     </div>
