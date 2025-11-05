@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,7 +18,7 @@ export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [showBalance, setShowBalance] = useState(true);
-  const [expandedCard, setExpandedCard] = useState(null); // 'income', 'expense', ou null
+  const [expandedCard, setExpandedCard] = useState(null);
 
   const { data: transactions, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions'],
@@ -34,8 +34,7 @@ export default function Dashboard() {
 
   const isLoading = loadingTransactions || loadingRecurring;
 
-  // Gera lista dos últimos 12 meses
-  const monthOptions = React.useMemo(() => {
+  const monthOptions = useMemo(() => {
     const options = [];
     for (let i = 0; i < 12; i++) {
       const date = subMonths(new Date(), i);
@@ -48,8 +47,7 @@ export default function Dashboard() {
     return options;
   }, []);
 
-  // Extrai contas únicas das transações
-  const accounts = React.useMemo(() => {
+  const accounts = useMemo(() => {
     const accountSet = new Set();
     transactions.forEach(t => {
       if (t.bank_account) {
@@ -59,8 +57,7 @@ export default function Dashboard() {
     return Array.from(accountSet);
   }, [transactions]);
 
-  // Filtra transações por conta e mês
-  const filteredTransactions = React.useMemo(() => {
+  const filteredTransactions = useMemo(() => {
     const monthsBack = parseInt(selectedMonth);
     const selectedDate = subMonths(new Date(), monthsBack);
     const monthStart = startOfMonth(selectedDate);
@@ -74,8 +71,7 @@ export default function Dashboard() {
     });
   }, [transactions, selectedMonth, selectedAccount]);
 
-  // Calcula saldo total (todas as transações até hoje)
-  const totalBalance = React.useMemo(() => {
+  const totalBalance = useMemo(() => {
     const filteredByAccount = selectedAccount === "all" 
       ? transactions 
       : transactions.filter(t => t.bank_account === selectedAccount);
@@ -85,8 +81,7 @@ export default function Dashboard() {
     }, 0);
   }, [transactions, selectedAccount]);
 
-  // Estatísticas do mês selecionado
-  const monthStats = React.useMemo(() => {
+  const monthStats = useMemo(() => {
     const income = filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -106,11 +101,11 @@ export default function Dashboard() {
     setExpandedCard(expandedCard === type ? null : type);
   };
 
-  const incomeTransactions = React.useMemo(() => {
+  const incomeTransactions = useMemo(() => {
     return filteredTransactions.filter(t => t.type === 'income');
   }, [filteredTransactions]);
 
-  const expenseTransactions = React.useMemo(() => {
+  const expenseTransactions = useMemo(() => {
     return filteredTransactions.filter(t => t.type === 'expense');
   }, [filteredTransactions]);
 
@@ -130,7 +125,6 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
-      {/* Saldo total das contas */}
       <AccountBalance
         balance={totalBalance}
         selectedAccount={selectedAccount}
@@ -140,7 +134,6 @@ export default function Dashboard() {
         onToggleBalance={() => setShowBalance(!showBalance)}
       />
 
-      {/* Filtro de mês */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
           <Calendar className="w-5 h-5" />
@@ -160,7 +153,6 @@ export default function Dashboard() {
         </Select>
       </div>
 
-      {/* Cards de resumo do mês + lista expandida */}
       <div className="grid grid-cols-3 gap-3">
         <MonthSummaryCards
           income={monthStats.income}
@@ -171,7 +163,6 @@ export default function Dashboard() {
           expandedCard={expandedCard}
         />
         
-        {/* Lista expandida de entradas */}
         {expandedCard === 'income' && (
           <ExpandedTransactionList
             transactions={incomeTransactions}
@@ -180,7 +171,6 @@ export default function Dashboard() {
           />
         )}
         
-        {/* Lista expandida de saídas */}
         {expandedCard === 'expense' && (
           <ExpandedTransactionList
             transactions={expenseTransactions}
@@ -190,7 +180,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Alert se não houver transações */}
       {transactions.length === 0 && (
         <Alert className="border-blue-200 bg-blue-50">
           <AlertCircle className="h-4 w-4 text-blue-600" />
@@ -200,10 +189,8 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      {/* Próximos lançamentos */}
       <UpcomingExpenses recurringExpenses={recurringExpenses} />
 
-      {/* Últimas transações */}
       <RecentTransactions transactions={transactions} />
     </div>
   );

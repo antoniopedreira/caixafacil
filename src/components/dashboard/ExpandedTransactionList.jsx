@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,7 @@ export default function ExpandedTransactionList({ transactions, type, onClose })
   const [filterCategory, setFilterCategory] = useState("all");
   const [sortBy, setSortBy] = useState("date-desc");
 
-  const filteredAndSorted = React.useMemo(() => {
+  const filteredAndSorted = useMemo(() => {
     let filtered = [...transactions];
 
     if (filterCategory !== "all") {
@@ -52,7 +52,7 @@ export default function ExpandedTransactionList({ transactions, type, onClose })
     return filtered;
   }, [transactions, filterCategory, sortBy]);
 
-  const categories = React.useMemo(() => {
+  const categories = useMemo(() => {
     const categorySet = new Set(transactions.map(t => t.category));
     return Array.from(categorySet);
   }, [transactions]);

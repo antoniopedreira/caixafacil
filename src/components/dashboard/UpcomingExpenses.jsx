@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, AlertCircle } from "lucide-react";
@@ -6,7 +6,7 @@ import { format, setDate, differenceInDays, isPast, isSameMonth } from 'date-fns
 import { ptBR } from 'date-fns/locale';
 
 export default function UpcomingExpenses({ recurringExpenses }) {
-  const upcomingExpenses = React.useMemo(() => {
+  const upcomingExpenses = useMemo(() => {
     const now = new Date();
     
     return recurringExpenses
