@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,26 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+
+// Função para abreviar e formatar descrição
+const formatDescription = (description, maxWords = 4) => {
+  if (!description) return '';
+  
+  const toTitleCase = (str) => {
+    return str.toLowerCase().split(' ').map(word => {
+      if (['de', 'da', 'do', 'e', 'a', 'o', 'das', 'dos'].includes(word.toLowerCase())) {
+        return word.toLowerCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+  
+  let cleaned = description.trim();
+  const words = cleaned.split(' ').filter(w => w.length > 0);
+  const abbreviated = words.slice(0, maxWords).join(' ');
+  
+  return toTitleCase(abbreviated);
+};
 
 const CATEGORY_NAMES = {
   vendas: "Vendas",
@@ -68,7 +89,7 @@ export default function RecentTransactions({ transactions }) {
                 {getCategoryIcon(transaction.category, transaction.type)}
                 <div>
                   <p className="font-semibold text-slate-900 text-sm">
-                    {transaction.description}
+                    {formatDescription(transaction.description)}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-xs text-slate-600">
