@@ -48,19 +48,13 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
       ? ((balance - previousBalance) / Math.abs(previousBalance)) * 100 
       : (balance > 0 ? 100 : 0);
     
-    // Monta o nome das contas para o tooltip
-    const accountNames = selectedAccount === "all" 
-      ? (accounts.length > 1 ? accounts.join(', ') : accounts[0] || 'suas contas')
-      : selectedAccount;
-    
     return {
       previousBalance,
       variation,
       isPositive: variation >= 0,
-      previousDate: previousMonthSameDay,
-      accountNames
+      previousDate: previousMonthSameDay
     };
-  }, [transactions, selectedAccount, balance, accounts]);
+  }, [transactions, selectedAccount, balance]);
 
   // Define o label baseado na seleção
   const getAccountLabel = () => {
@@ -133,7 +127,7 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
                       <TooltipContent className="max-w-xs bg-white text-slate-900 p-3">
                         <p className="text-sm leading-relaxed">
                           No mesmo dia do mês anterior ({format(previousMonthComparison.previousDate, "dd/MM/yyyy")}), 
-                          o seu saldo bancário {selectedAccount === "all" && accounts.length > 1 ? `nas contas ${previousMonthComparison.accountNames}` : `na conta ${previousMonthComparison.accountNames}`} era de{' '}
+                          o seu saldo bancário era de{' '}
                           <strong>R$ {formatCurrency(previousMonthComparison.previousBalance)}</strong>.
                           {' '}Ou seja, hoje o seu saldo em caixa é{' '}
                           <strong className={previousMonthComparison.isPositive ? 'text-emerald-600' : 'text-rose-600'}>
