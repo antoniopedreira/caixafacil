@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,7 +14,7 @@ export default function UploadStatement() {
   const [file, setFile] = useState(null);
   const [bankAccountName, setBankAccountName] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const [status, setStatus] = useState("idle"); // idle, uploading, processing, success, error
+  const [status, setStatus] = useState("idle");
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState("");
   const [extractedCount, setExtractedCount] = useState(0);
@@ -40,8 +39,8 @@ export default function UploadStatement() {
     if (droppedFile) {
       setFile(droppedFile);
       setStatus("idle");
-      setErrorDetails(""); // Clear error when new file is dropped
-      setMessage(""); // Clear message
+      setErrorDetails("");
+      setMessage("");
     }
   }, []);
 
@@ -50,8 +49,8 @@ export default function UploadStatement() {
     if (selectedFile) {
       setFile(selectedFile);
       setStatus("idle");
-      setErrorDetails(""); // Clear error when new file is selected
-      setMessage(""); // Clear message
+      setErrorDetails("");
+      setMessage("");
     }
   };
 
@@ -59,7 +58,7 @@ export default function UploadStatement() {
     if (!file) return;
     
     if (!bankAccountName.trim()) {
-      setStatus("error"); // Set status to error to show the alert
+      setStatus("error");
       setMessage("Nome da conta bancária é obrigatório.");
       setErrorDetails("Por favor, informe o nome da conta bancária para prosseguir com a importação.");
       return;
@@ -68,7 +67,7 @@ export default function UploadStatement() {
     setStatus("uploading");
     setProgress(10);
     setMessage("Enviando arquivo...");
-    setErrorDetails(""); // Clear previous error details
+    setErrorDetails("");
 
     try {
       // Upload do arquivo
@@ -76,64 +75,46 @@ export default function UploadStatement() {
       
       setProgress(30);
       setStatus("processing");
-      setMessage("Analisando extrato com IA...");
+      setMessage("Analisando extrato com IA... (pode levar até 30 segundos)");
 
-      // Schema simplificado para extração
+      // Schema mais simples e robusto
       const extractionSchema = {
         type: "object",
         properties: {
           transactions: {
             type: "array",
-            description: "Lista de todas as transações encontradas no extrato bancário",
+            description: "Lista de transações extraídas do extrato. Extraia TODAS as linhas de movimentação do extrato.",
             items: {
               type: "object",
               properties: {
                 date: {
                   type: "string",
-                  format: "date",
-                  description: "Data da transação no formato YYYY-MM-DD"
+                  description: "Data da transação no formato YYYY-MM-DD. Se o ano não estiver no extrato, use o ano atual."
                 },
                 description: {
                   type: "string",
-                  description: "Descrição ou histórico da transação"
+                  description: "Descrição completa da transação como aparece no extrato"
                 },
                 amount: {
                   type: "number",
-                  description: "Valor da transação (sempre positivo)"
+                  description: "Valor absoluto da transação (sempre número positivo, sem vírgulas ou pontos de formatação)"
                 },
                 type: {
                   type: "string",
                   enum: ["income", "expense"],
-                  description: "Tipo: income para entradas/créditos, expense para saídas/débitos"
-                },
-                category: {
-                  type: "string",
-                  enum: [
-                    "vendas",
-                    "servicos",
-                    "outras_receitas",
-                    "salarios_funcionarios",
-                    "fornecedores",
-                    "aluguel",
-                    "contas_servicos",
-                    "impostos_taxas",
-                    "marketing_publicidade",
-                    "equipamentos_materiais",
-                    "manutencao",
-                    "combustivel_transporte",
-                    "outras_despesas"
-                  ],
-                  description: "Categoria que melhor representa a transação"
+                  description: "Use 'income' para CRÉDITOS/ENTRADAS e 'expense' para DÉBITOS/SAÍDAS"
                 }
               },
-              required: ["date", "description", "amount", "type", "category"]
+              required: ["date", "description", "amount", "type"]
             }
           }
         },
         required: ["transactions"]
       };
 
-      // Extrair dados do arquivo
+      setProgress(50);
+
+      // Extrair dados do arquivo com timeout aumentado
       const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url,
         json_schema: extractionSchema
@@ -142,26 +123,97 @@ export default function UploadStatement() {
       setProgress(70);
 
       if (result.status === "success" && result.output?.transactions) {
-        const transactions = result.output.transactions;
+        let transactions = result.output.transactions;
+        
+        // Validação e limpeza dos dados
+        transactions = transactions.filter(t => {
+          // Remove transações inválidas
+          if (!t.date || !t.description || !t.amount || !t.type) {
+            console.warn('Transação inválida ignorada:', t);
+            return false;
+          }
+          return true;
+        });
         
         if (transactions.length === 0) {
-          throw new Error("Nenhuma transação foi encontrada no arquivo. Verifique se o arquivo contém um extrato bancário válido.");
+          throw new Error("Nenhuma transação válida foi encontrada no arquivo. Verifique se o arquivo contém um extrato bancário com movimentações.");
         }
 
-        setMessage(`Importando ${transactions.length} transações...`);
+        setMessage(`Categorizando ${transactions.length} transações...`);
         setProgress(80);
+
+        // Categoriza usando IA em lote
+        const categorizationPrompt = `Você é um especialista em categorização financeira para empresas brasileiras.
+
+Categorize cada transação abaixo em UMA das seguintes categorias:
+
+**Para RECEITAS (income):**
+- vendas: Vendas de produtos/serviços
+- servicos: Prestação de serviços, honorários profissionais
+- outras_receitas: Outras receitas não especificadas
+
+**Para DESPESAS (expense):**
+- salarios_funcionarios: Pagamentos de salários e folha
+- fornecedores: Pagamentos a fornecedores e prestadores
+- aluguel: Aluguel comercial
+- contas_servicos: Contas (luz, água, internet, telefone)
+- impostos_taxas: Impostos, taxas, tributos
+- marketing_publicidade: Marketing e publicidade
+- equipamentos_materiais: Equipamentos, materiais, software
+- manutencao: Manutenção e reparos
+- combustivel_transporte: Combustível e transporte
+- outras_despesas: Outras despesas
+
+**Transações:**
+${transactions.map((t, i) => `${i + 1}. ${t.description} | ${t.type} | R$ ${t.amount}`).join('\n')}
+
+Responda APENAS com um JSON array no formato:
+["categoria1", "categoria2", "categoria3", ...]
+
+Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
+
+        let categories = [];
+        try {
+          const categorizationResult = await base44.integrations.Core.InvokeLLM({
+            prompt: categorizationPrompt,
+            add_context_from_internet: false,
+            response_json_schema: {
+              type: "object",
+              properties: {
+                categories: {
+                  type: "array",
+                  items: { type: "string" }
+                }
+              }
+            }
+          });
+          
+          categories = categorizationResult.categories || [];
+        } catch (error) {
+          console.error('Erro na categorização:', error);
+          // Usa categorias padrão se falhar
+          categories = transactions.map(t => 
+            t.type === 'income' ? 'outras_receitas' : 'outras_despesas'
+          );
+        }
+
+        setProgress(90);
         
-        // Criar transações em lote com o nome da conta bancária
-        const transactionsToCreate = transactions.map(t => ({
-          date: t.date,
-          description: t.description,
-          amount: t.type === 'expense' ? -Math.abs(t.amount) : Math.abs(t.amount),
-          type: t.type,
-          category: t.category,
-          payment_method: "transferencia",
-          bank_account: bankAccountName.trim(), // Adiciona o nome da conta
-          notes: `Importado do extrato em ${new Date().toLocaleDateString('pt-BR')}`
-        }));
+        // Criar transações em lote
+        const transactionsToCreate = transactions.map((t, i) => {
+          const category = categories[i] || (t.type === 'income' ? 'outras_receitas' : 'outras_despesas');
+          
+          return {
+            date: t.date,
+            description: t.description,
+            amount: t.type === 'expense' ? -Math.abs(t.amount) : Math.abs(t.amount),
+            type: t.type,
+            category: category,
+            payment_method: "transferencia",
+            bank_account: bankAccountName.trim(),
+            notes: `Importado do extrato em ${new Date().toLocaleDateString('pt-BR')}`
+          };
+        });
 
         await base44.entities.Transaction.bulkCreate(transactionsToCreate);
 
@@ -174,28 +226,31 @@ export default function UploadStatement() {
         
         setTimeout(() => {
           setFile(null);
-          setBankAccountName(""); // Reset bank account name on success
+          setBankAccountName("");
           setStatus("idle");
           setProgress(0);
           setMessage("");
         }, 4000);
       } else {
-        throw new Error(result.details || "Não foi possível extrair dados do arquivo. O formato pode não ser compatível.");
+        throw new Error(result.details || "Não foi possível extrair dados do arquivo. O formato pode não ser compatível ou o arquivo pode estar vazio.");
       }
     } catch (error) {
       console.error("Erro completo:", error);
       setStatus("error");
       
-      let userMessage = "Erro ao processar o arquivo.";
+      let userMessage = "Erro ao processar o arquivo";
       let details = "";
       
       if (error.message) {
-        if (error.message.includes("encontrada")) {
-          userMessage = "Nenhuma transação encontrada no arquivo";
-          details = "Verifique se o arquivo é um extrato bancário válido com movimentações.";
-        } else if (error.message.includes("formato")) {
-          userMessage = "Formato de arquivo não reconhecido";
-          details = "Tente com um PDF mais legível ou exporte seu extrato em formato CSV.";
+        if (error.message.includes("encontrada") || error.message.includes("válida")) {
+          userMessage = "Nenhuma transação encontrada";
+          details = "Verifique se o arquivo é um extrato bancário válido com movimentações. Aceitos: CSV do banco ou PDF com texto selecionável.";
+        } else if (error.message.includes("formato") || error.message.includes("compatível")) {
+          userMessage = "Formato não reconhecido";
+          details = "Tente exportar o extrato em formato CSV diretamente do seu banco, ou use um PDF com texto legível (não escaneado).";
+        } else if (error.message.includes("timeout") || error.message.includes("tempo")) {
+          userMessage = "Tempo de processamento excedido";
+          details = "O arquivo é muito grande ou complexo. Tente dividir o extrato em períodos menores (ex: mês a mês).";
         } else {
           userMessage = "Erro ao processar extrato";
           details = error.message;
@@ -212,7 +267,7 @@ export default function UploadStatement() {
       <div>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Importar Extrato Bancário</h1>
         <p className="text-slate-600">
-          Faça upload do seu extrato em CSV, PDF ou imagem e deixe a IA processar automaticamente
+          Faça upload do seu extrato em CSV ou PDF e deixe a IA processar automaticamente
         </p>
       </div>
 
@@ -220,8 +275,8 @@ export default function UploadStatement() {
       <Alert className="border-blue-200 bg-blue-50">
         <AlertCircle className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-900">
-          <strong>Dica:</strong> O sistema funciona melhor com extratos bancários em formato CSV ou PDF com texto selecionável. 
-          Certifique-se de que as informações de data, descrição e valor estejam visíveis.
+          <strong>Melhor resultado:</strong> Use extratos em formato CSV exportados diretamente do site do seu banco. 
+          PDFs também funcionam, mas devem ter texto selecionável (não escaneados).
         </AlertDescription>
       </Alert>
 
@@ -338,7 +393,7 @@ export default function UploadStatement() {
                       variant="outline"
                       onClick={() => {
                         setFile(null);
-                        setBankAccountName(""); // Reset bank account name on remove
+                        setBankAccountName("");
                         setErrorDetails("");
                         setMessage("");
                       }}
@@ -361,7 +416,7 @@ export default function UploadStatement() {
                       variant="outline"
                       onClick={() => {
                         setFile(null);
-                        setBankAccountName(""); // Reset bank account name on try another
+                        setBankAccountName("");
                         setStatus("idle");
                         setErrorDetails("");
                         setMessage("");
@@ -369,7 +424,6 @@ export default function UploadStatement() {
                     >
                       Tentar Outro Arquivo
                     </Button>
-                    {/* The "Tentar Novamente" button needs the bankAccountName to retry, so we don't reset it here */}
                     <Button
                       onClick={processFile}
                       className="bg-blue-600 hover:bg-blue-700"
@@ -397,7 +451,7 @@ export default function UploadStatement() {
             <div>
               <h4 className="font-semibold text-slate-900 mb-1">Faça upload do extrato</h4>
               <p className="text-sm text-slate-600">
-                Selecione ou arraste o arquivo do seu extrato bancário (PDF, CSV ou imagem)
+                Exporte o extrato do site do seu banco em formato CSV ou PDF (com texto selecionável)
               </p>
             </div>
           </div>
@@ -421,7 +475,7 @@ export default function UploadStatement() {
             <div>
               <h4 className="font-semibold text-slate-900 mb-1">IA processa automaticamente</h4>
               <p className="text-sm text-slate-600">
-                Nossa inteligência artificial lê o arquivo e identifica todas as transações com suas datas, valores e descrições
+                Nossa inteligência artificial extrai todas as transações, identificando datas, valores e descrições
               </p>
             </div>
           </div>
@@ -461,11 +515,11 @@ export default function UploadStatement() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-orange-900 space-y-2">
-          <p>✓ Use PDFs com texto selecionável (não escaneados)</p>
-          <p>✓ Extratos em formato CSV funcionam melhor</p>
+          <p>✓ <strong>Melhor opção:</strong> Exporte extrato em CSV do site do banco</p>
+          <p>✓ PDFs devem ter texto selecionável (não escaneados ou fotos)</p>
+          <p>✓ Extratos muito grandes: divida em períodos menores (1-3 meses)</p>
           <p>✓ Certifique-se de que o arquivo contém data, descrição e valor</p>
-          <p>✓ Evite arquivos muito grandes (máx. 10MB)</p>
-          <p>✓ Use nomes de contas descritivos para facilitar a identificação</p>
+          <p>✓ Use nomes de contas descritivos (ex: "C6 Bank Conta PJ")</p>
         </CardContent>
       </Card>
     </div>
