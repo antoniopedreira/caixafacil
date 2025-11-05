@@ -1,26 +1,36 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, TrendingDown, Wallet, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Calendar } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import StatCard from "../components/dashboard/StatCard";
-import CashFlowChart from "../components/dashboard/CashFlowChart";
-import CategoryChart from "../components/dashboard/CategoryChart";
+import AccountBalance from "../components/dashboard/AccountBalance";
+import MonthSummaryCards from "../components/dashboard/MonthSummaryCards";
+import UpcomingExpenses from "../components/dashboard/UpcomingExpenses";
+import RecentTransactions from "../components/dashboard/RecentTransactions";
 
 export default function Dashboard() {
-  const [selectedMonth, setSelectedMonth] = useState("0"); // 0 = mês atual
+  const [selectedMonth, setSelectedMonth] = useState("0");
+  const [selectedAccount, setSelectedAccount] = useState("all");
+  const [showBalance, setShowBalance] = useState(true);
 
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions'],
     queryFn: () => base44.entities.Transaction.list('-date'),
     initialData: [],
   });
+
+  const { data: recurringExpenses, isLoading: loadingRecurring } = useQuery({
+    queryKey: ['recurring-expenses'],
+    queryFn: () => base44.entities.RecurringExpense.list('-due_day'),
+    initialData: [],
+  });
+
+  const isLoading = loadingTransactions || loadingRecurring;
 
   // Gera lista dos últimos 12 meses
   const monthOptions = React.useMemo(() => {
@@ -36,102 +46,95 @@ export default function Dashboard() {
     return options;
   }, []);
 
-  // Calcular estatísticas do mês selecionado
-  const stats = React.useMemo(() => {
+  // Extrai contas únicas das transações
+  const accounts = React.useMemo(() => {
+    const accountSet = new Set();
+    transactions.forEach(t => {
+      if (t.bank_account) {
+        accountSet.add(t.bank_account);
+      }
+    });
+    return Array.from(accountSet);
+  }, [transactions]);
+
+  // Filtra transações por conta e mês
+  const filteredTransactions = React.useMemo(() => {
     const monthsBack = parseInt(selectedMonth);
     const selectedDate = subMonths(new Date(), monthsBack);
-    const previousDate = subMonths(selectedDate, 1);
-    
-    const selectedMonthStart = startOfMonth(selectedDate);
-    const selectedMonthEnd = endOfMonth(selectedDate);
-    const previousMonthStart = startOfMonth(previousDate);
-    const previousMonthEnd = endOfMonth(previousDate);
-    
-    const currentMonthTransactions = transactions.filter(t => {
+    const monthStart = startOfMonth(selectedDate);
+    const monthEnd = endOfMonth(selectedDate);
+
+    return transactions.filter(t => {
       const date = new Date(t.date);
-      return date >= selectedMonthStart && date <= selectedMonthEnd;
+      const dateMatch = date >= monthStart && date <= monthEnd;
+      const accountMatch = selectedAccount === "all" || t.bank_account === selectedAccount;
+      return dateMatch && accountMatch;
     });
+  }, [transactions, selectedMonth, selectedAccount]);
+
+  // Calcula saldo total (todas as transações até hoje)
+  const totalBalance = React.useMemo(() => {
+    const filteredByAccount = selectedAccount === "all" 
+      ? transactions 
+      : transactions.filter(t => t.bank_account === selectedAccount);
     
-    const lastMonthTransactions = transactions.filter(t => {
-      const date = new Date(t.date);
-      return date >= previousMonthStart && date <= previousMonthEnd;
-    });
-    
-    const totalIncome = currentMonthTransactions
+    return filteredByAccount.reduce((sum, t) => {
+      return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
+    }, 0);
+  }, [transactions, selectedAccount]);
+
+  // Estatísticas do mês selecionado
+  const monthStats = React.useMemo(() => {
+    const income = filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const totalExpense = currentMonthTransactions
+    const expense = filteredTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
-    const lastMonthIncome = lastMonthTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-    
-    const lastMonthExpense = lastMonthTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
-    const balance = totalIncome - totalExpense;
-    const lastMonthBalance = lastMonthIncome - lastMonthExpense;
-    
-    const incomeTrend = lastMonthIncome > 0 
-      ? ((totalIncome - lastMonthIncome) / lastMonthIncome * 100).toFixed(1)
-      : 0;
-    
-    const expenseTrend = lastMonthExpense > 0
-      ? ((totalExpense - lastMonthExpense) / lastMonthExpense * 100).toFixed(1)
-      : 0;
-    
-    const balanceTrend = lastMonthBalance !== 0
-      ? ((balance - lastMonthBalance) / Math.abs(lastMonthBalance) * 100).toFixed(1)
-      : 0;
     
     return {
-      totalIncome,
-      totalExpense,
-      balance,
-      incomeTrend: Math.abs(incomeTrend),
-      expenseTrend: Math.abs(expenseTrend),
-      balanceTrend: Math.abs(balanceTrend),
-      incomeTrendDirection: incomeTrend >= 0 ? 'up' : 'down',
-      expenseTrendDirection: expenseTrend >= 0 ? 'up' : 'down',
-      balanceTrendDirection: balanceTrend >= 0 ? 'up' : 'down'
+      income,
+      expense,
+      balance: income - expense
     };
-  }, [transactions, selectedMonth]);
+  }, [filteredTransactions]);
 
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+        <Skeleton className="h-48 w-full" />
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
         </div>
+        <Skeleton className="h-64" />
       </div>
     );
   }
 
-  const selectedMonthLabel = monthOptions.find(m => m.value === selectedMonth)?.label || '';
-
   return (
     <div className="p-6 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Visão Geral do Fluxo de Caixa
-          </h1>
-          <p className="text-slate-600">
-            Acompanhe suas finanças em tempo real
-          </p>
-        </div>
+      {/* Saldo total das contas */}
+      <AccountBalance
+        balance={totalBalance}
+        selectedAccount={selectedAccount}
+        onAccountChange={setSelectedAccount}
+        accounts={accounts}
+        showBalance={showBalance}
+        onToggleBalance={() => setShowBalance(!showBalance)}
+      />
 
+      {/* Filtro de mês */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <Calendar className="w-5 h-5" />
+          Resumo do Mês
+        </h2>
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
           <SelectTrigger className="w-64">
-            <SelectValue placeholder="Selecione o mês" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {monthOptions.map(option => (
@@ -143,55 +146,28 @@ export default function Dashboard() {
         </Select>
       </div>
 
+      {/* Cards de resumo do mês */}
+      <MonthSummaryCards
+        income={monthStats.income}
+        expense={monthStats.expense}
+        balance={monthStats.balance}
+      />
+
       {/* Alert se não houver transações */}
       {transactions.length === 0 && (
         <Alert className="border-blue-200 bg-blue-50">
           <AlertCircle className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-900">
-            Você ainda não tem transações registradas. Comece importando um extrato bancário ou adicionando transações manualmente!
+            <strong>Comece agora!</strong> Importe um extrato bancário ou adicione transações manualmente para visualizar seus dados.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <StatCard
-          title="Saldo do Mês"
-          value={`R$ ${stats.balance.toFixed(2)}`}
-          icon={Wallet}
-          type={stats.balance >= 0 ? 'income' : 'expense'}
-          trend={stats.balanceTrendDirection}
-          trendValue={`${stats.balanceTrend}%`}
-        />
-        <StatCard
-          title="Receitas do Mês"
-          value={`R$ ${stats.totalIncome.toFixed(2)}`}
-          icon={TrendingUp}
-          type="income"
-          trend={stats.incomeTrendDirection}
-          trendValue={`${stats.incomeTrend}%`}
-        />
-        <StatCard
-          title="Despesas do Mês"
-          value={`R$ ${stats.totalExpense.toFixed(2)}`}
-          icon={TrendingDown}
-          type="expense"
-          trend={stats.expenseTrendDirection}
-          trendValue={`${stats.expenseTrend}%`}
-        />
-      </div>
+      {/* Próximos lançamentos */}
+      <UpcomingExpenses recurringExpenses={recurringExpenses} />
 
-      {/* Gráficos */}
-      {transactions.length > 0 && (
-        <>
-          <CashFlowChart transactions={transactions} />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <CategoryChart transactions={transactions} type="expense" />
-            <CategoryChart transactions={transactions} type="income" />
-          </div>
-        </>
-      )}
+      {/* Últimas transações */}
+      <RecentTransactions transactions={transactions} />
     </div>
   );
 }
