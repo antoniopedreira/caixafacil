@@ -140,7 +140,7 @@ export default function ExpandedTransactionList({ transactions, type }) {
                 {expandedCategory === group.category && (
                   <div className="ml-6 mt-1 space-y-1">
                     {group.transactions
-                      .sort((a, b) => new Date(b.date) - new Date(a.date))
+                      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
                       .map((transaction) => (
                         <div
                           key={transaction.id}
