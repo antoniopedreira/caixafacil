@@ -1,8 +1,15 @@
 import React, { useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, EyeOff, TrendingUp, TrendingDown } from "lucide-react";
-import { subMonths, startOfMonth, isBefore } from 'date-fns';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Eye, EyeOff, TrendingUp, TrendingDown, HelpCircle } from "lucide-react";
+import { subMonths, startOfMonth, isBefore, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Função para formatar valor com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
@@ -41,12 +48,19 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
       ? ((balance - previousBalance) / Math.abs(previousBalance)) * 100 
       : (balance > 0 ? 100 : 0);
     
+    // Monta o nome das contas para o tooltip
+    const accountNames = selectedAccount === "all" 
+      ? (accounts.length > 1 ? accounts.join(', ') : accounts[0] || 'suas contas')
+      : selectedAccount;
+    
     return {
       previousBalance,
       variation,
-      isPositive: variation >= 0
+      isPositive: variation >= 0,
+      previousDate: previousMonthSameDay,
+      accountNames
     };
-  }, [transactions, selectedAccount, balance]);
+  }, [transactions, selectedAccount, balance, accounts]);
 
   // Define o label baseado na seleção
   const getAccountLabel = () => {
@@ -105,9 +119,31 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
                     {Math.abs(previousMonthComparison.variation).toFixed(1)}%
                   </span>
                 </div>
-                <span className="text-emerald-100 text-xs">
-                  vs mês anterior (R$ {formatCurrency(previousMonthComparison.previousBalance)})
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-emerald-100 text-xs">
+                    vs mês anterior R$ {formatCurrency(previousMonthComparison.previousBalance)}
+                  </span>
+                  <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <button className="hover:bg-emerald-400/30 rounded-full p-0.5 transition-colors">
+                          <HelpCircle className="w-3.5 h-3.5 text-emerald-100" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs bg-white text-slate-900 p-3">
+                        <p className="text-sm leading-relaxed">
+                          No mesmo dia do mês anterior ({format(previousMonthComparison.previousDate, "dd/MM/yyyy")}), 
+                          o seu saldo bancário {selectedAccount === "all" && accounts.length > 1 ? `nas contas ${previousMonthComparison.accountNames}` : `na conta ${previousMonthComparison.accountNames}`} era de{' '}
+                          <strong>R$ {formatCurrency(previousMonthComparison.previousBalance)}</strong>.
+                          {' '}Ou seja, hoje o seu saldo em caixa é{' '}
+                          <strong className={previousMonthComparison.isPositive ? 'text-emerald-600' : 'text-rose-600'}>
+                            {Math.abs(previousMonthComparison.variation).toFixed(1)}% {previousMonthComparison.isPositive ? 'maior' : 'menor'}
+                          </strong>.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             </>
           ) : (
