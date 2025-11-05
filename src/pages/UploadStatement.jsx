@@ -70,189 +70,191 @@ export default function UploadStatement() {
     setErrorDetails("");
 
     try {
-      // Upload do arquivo
+      // 1. Upload do arquivo
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       
       setProgress(30);
       setStatus("processing");
-      setMessage("Analisando extrato com IA... (pode levar até 30 segundos)");
+      setMessage("Extraindo transações com IA... aguarde até 40 segundos");
 
-      // Schema mais simples e robusto
-      const extractionSchema = {
-        type: "object",
-        properties: {
-          transactions: {
-            type: "array",
-            description: "Lista de transações extraídas do extrato. Extraia TODAS as linhas de movimentação do extrato.",
-            items: {
-              type: "object",
-              properties: {
-                date: {
-                  type: "string",
-                  description: "Data da transação no formato YYYY-MM-DD. Se o ano não estiver no extrato, use o ano atual."
+      // 2. Extrai dados usando LLM diretamente (sem ExtractDataFromUploadedFile)
+      const extractionPrompt = `Você é um especialista em análise de extratos bancários brasileiros.
+
+Analise o arquivo anexado e extraia TODAS as transações bancárias encontradas.
+
+Para cada transação, identifique:
+- **data**: Data no formato YYYY-MM-DD (se o ano não estiver explícito, use 2025)
+- **description**: Descrição da transação (combine descrição + fornecedor se houver)
+- **amount**: Valor numérico absoluto (apenas número, sem R$, pontos ou vírgulas)
+- **type**: "income" para CRÉDITO/ENTRADA ou "expense" para DÉBITO/SAÍDA
+
+**IMPORTANTE:**
+- Extraia TODAS as linhas de movimentação
+- Converta valores de formato brasileiro (1.234,56) para número puro (1234.56)
+- Se houver colunas "Tipo", "Natureza" ou similar, use para definir income/expense
+- Ignore cabeçalhos, totais e linhas de saldo
+
+Retorne APENAS um JSON no formato:
+{
+  "transactions": [
+    {
+      "date": "2025-01-05",
+      "description": "Pagamento - Fornecedor XYZ",
+      "amount": 150.00,
+      "type": "expense"
+    }
+  ]
+}`;
+
+      const extractionResult = await base44.integrations.Core.InvokeLLM({
+        prompt: extractionPrompt,
+        file_urls: file_url,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            transactions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  date: { type: "string" },
+                  description: { type: "string" },
+                  amount: { type: "number" },
+                  type: { type: "string", enum: ["income", "expense"] }
                 },
-                description: {
-                  type: "string",
-                  description: "Descrição completa da transação como aparece no extrato"
-                },
-                amount: {
-                  type: "number",
-                  description: "Valor absoluto da transação (sempre número positivo, sem vírgulas ou pontos de formatação)"
-                },
-                type: {
-                  type: "string",
-                  enum: ["income", "expense"],
-                  description: "Use 'income' para CRÉDITOS/ENTRADAS e 'expense' para DÉBITOS/SAÍDAS"
-                }
-              },
-              required: ["date", "description", "amount", "type"]
+                required: ["date", "description", "amount", "type"]
+              }
             }
-          }
-        },
-        required: ["transactions"]
-      };
-
-      setProgress(50);
-
-      // Extrair dados do arquivo com timeout aumentado
-      const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url,
-        json_schema: extractionSchema
+          },
+          required: ["transactions"]
+        }
       });
 
-      setProgress(70);
+      setProgress(60);
 
-      if (result.status === "success" && result.output?.transactions) {
-        let transactions = result.output.transactions;
-        
-        // Validação e limpeza dos dados
-        transactions = transactions.filter(t => {
-          // Remove transações inválidas
-          if (!t.date || !t.description || !t.amount || !t.type) {
-            console.warn('Transação inválida ignorada:', t);
-            return false;
-          }
-          return true;
-        });
-        
-        if (transactions.length === 0) {
-          throw new Error("Nenhuma transação válida foi encontrada no arquivo. Verifique se o arquivo contém um extrato bancário com movimentações.");
+      if (!extractionResult?.transactions || extractionResult.transactions.length === 0) {
+        throw new Error("Nenhuma transação foi encontrada no arquivo. Certifique-se de que é um extrato bancário válido.");
+      }
+
+      let transactions = extractionResult.transactions;
+      
+      // Validação
+      transactions = transactions.filter(t => {
+        if (!t.date || !t.description || !t.amount || !t.type) {
+          console.warn('Transação inválida ignorada:', t);
+          return false;
         }
+        return true;
+      });
+      
+      if (transactions.length === 0) {
+        throw new Error("Nenhuma transação válida foi encontrada após validação.");
+      }
 
-        setMessage(`Categorizando ${transactions.length} transações...`);
-        setProgress(80);
+      setMessage(`Categorizando ${transactions.length} transações com IA...`);
+      setProgress(75);
 
-        // Categoriza usando IA em lote
-        const categorizationPrompt = `Você é um especialista em categorização financeira para empresas brasileiras.
+      // 3. Categoriza em lote
+      const categorizationPrompt = `Categorize cada uma das ${transactions.length} transações abaixo.
 
-Categorize cada transação abaixo em UMA das seguintes categorias:
-
-**Para RECEITAS (income):**
+**Categorias para RECEITAS (income):**
 - vendas: Vendas de produtos/serviços
-- servicos: Prestação de serviços, honorários profissionais
-- outras_receitas: Outras receitas não especificadas
+- servicos: Prestação de serviços
+- outras_receitas: Outras receitas
 
-**Para DESPESAS (expense):**
-- salarios_funcionarios: Pagamentos de salários e folha
-- fornecedores: Pagamentos a fornecedores e prestadores
-- aluguel: Aluguel comercial
-- contas_servicos: Contas (luz, água, internet, telefone)
-- impostos_taxas: Impostos, taxas, tributos
-- marketing_publicidade: Marketing e publicidade
-- equipamentos_materiais: Equipamentos, materiais, software
-- manutencao: Manutenção e reparos
+**Categorias para DESPESAS (expense):**
+- salarios_funcionarios: Salários e folha
+- fornecedores: Pagamentos a fornecedores
+- aluguel: Aluguel
+- contas_servicos: Luz, água, internet, telefone
+- impostos_taxas: Impostos e taxas
+- marketing_publicidade: Marketing
+- equipamentos_materiais: Equipamentos e materiais
+- manutencao: Manutenção
 - combustivel_transporte: Combustível e transporte
 - outras_despesas: Outras despesas
 
 **Transações:**
-${transactions.map((t, i) => `${i + 1}. ${t.description} | ${t.type} | R$ ${t.amount}`).join('\n')}
+${transactions.map((t, i) => `${i + 1}. "${t.description}" | ${t.type} | R$ ${t.amount}`).join('\n')}
 
-Responda APENAS com um JSON array no formato:
-["categoria1", "categoria2", "categoria3", ...]
-
+Retorne um array com as categorias NA MESMA ORDEM das transações.
 Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
 
-        let categories = [];
-        try {
-          const categorizationResult = await base44.integrations.Core.InvokeLLM({
-            prompt: categorizationPrompt,
-            add_context_from_internet: false,
-            response_json_schema: {
-              type: "object",
-              properties: {
-                categories: {
-                  type: "array",
-                  items: { type: "string" }
-                }
+      let categories = [];
+      try {
+        const catResult = await base44.integrations.Core.InvokeLLM({
+          prompt: categorizationPrompt,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              categories: {
+                type: "array",
+                items: { type: "string" }
               }
             }
-          });
-          
-          categories = categorizationResult.categories || [];
-        } catch (error) {
-          console.error('Erro na categorização:', error);
-          // Usa categorias padrão se falhar
-          categories = transactions.map(t => 
-            t.type === 'income' ? 'outras_receitas' : 'outras_despesas'
-          );
-        }
-
-        setProgress(90);
-        
-        // Criar transações em lote
-        const transactionsToCreate = transactions.map((t, i) => {
-          const category = categories[i] || (t.type === 'income' ? 'outras_receitas' : 'outras_despesas');
-          
-          return {
-            date: t.date,
-            description: t.description,
-            amount: t.type === 'expense' ? -Math.abs(t.amount) : Math.abs(t.amount),
-            type: t.type,
-            category: category,
-            payment_method: "transferencia",
-            bank_account: bankAccountName.trim(),
-            notes: `Importado do extrato em ${new Date().toLocaleDateString('pt-BR')}`
-          };
+          }
         });
-
-        await base44.entities.Transaction.bulkCreate(transactionsToCreate);
-
-        setProgress(100);
-        setStatus("success");
-        setExtractedCount(transactions.length);
-        setMessage(`✅ ${transactions.length} transações importadas para ${bankAccountName}!`);
         
-        queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        
-        setTimeout(() => {
-          setFile(null);
-          setBankAccountName("");
-          setStatus("idle");
-          setProgress(0);
-          setMessage("");
-        }, 4000);
-      } else {
-        throw new Error(result.details || "Não foi possível extrair dados do arquivo. O formato pode não ser compatível ou o arquivo pode estar vazio.");
+        categories = catResult.categories || [];
+      } catch (error) {
+        console.warn('Erro na categorização, usando padrão:', error);
+        categories = transactions.map(t => 
+          t.type === 'income' ? 'outras_receitas' : 'outras_despesas'
+        );
       }
+
+      setProgress(90);
+      setMessage("Salvando transações...");
+      
+      // 4. Cria transações
+      const transactionsToCreate = transactions.map((t, i) => {
+        const category = categories[i] || (t.type === 'income' ? 'outras_receitas' : 'outras_despesas');
+        
+        return {
+          date: t.date,
+          description: t.description,
+          amount: t.type === 'expense' ? -Math.abs(t.amount) : Math.abs(t.amount),
+          type: t.type,
+          category: category,
+          payment_method: "transferencia",
+          bank_account: bankAccountName.trim(),
+          notes: `Importado em ${new Date().toLocaleDateString('pt-BR')}`
+        };
+      });
+
+      await base44.entities.Transaction.bulkCreate(transactionsToCreate);
+
+      setProgress(100);
+      setStatus("success");
+      setExtractedCount(transactions.length);
+      setMessage(`✅ ${transactions.length} transações importadas com sucesso!`);
+      
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      
+      setTimeout(() => {
+        setFile(null);
+        setBankAccountName("");
+        setStatus("idle");
+        setProgress(0);
+        setMessage("");
+      }, 4000);
+      
     } catch (error) {
-      console.error("Erro completo:", error);
+      console.error("Erro:", error);
       setStatus("error");
       
-      let userMessage = "Erro ao processar o arquivo";
+      let userMessage = "Erro ao processar arquivo";
       let details = "";
       
       if (error.message) {
-        if (error.message.includes("encontrada") || error.message.includes("válida")) {
+        if (error.message.includes("encontrada") || error.message.includes("Nenhuma")) {
           userMessage = "Nenhuma transação encontrada";
-          details = "Verifique se o arquivo é um extrato bancário válido com movimentações. Aceitos: CSV do banco ou PDF com texto selecionável.";
-        } else if (error.message.includes("formato") || error.message.includes("compatível")) {
-          userMessage = "Formato não reconhecido";
-          details = "Tente exportar o extrato em formato CSV diretamente do seu banco, ou use um PDF com texto legível (não escaneado).";
-        } else if (error.message.includes("timeout") || error.message.includes("tempo")) {
-          userMessage = "Tempo de processamento excedido";
-          details = "O arquivo é muito grande ou complexo. Tente dividir o extrato em períodos menores (ex: mês a mês).";
+          details = "O arquivo não parece conter transações bancárias válidas. Use CSV ou PDF com texto legível.";
+        } else if (error.message.includes("timeout")) {
+          userMessage = "Tempo excedido";
+          details = "O arquivo é muito grande. Tente dividir em períodos menores (1-2 meses por arquivo).";
         } else {
-          userMessage = "Erro ao processar extrato";
+          userMessage = "Erro ao processar";
           details = error.message;
         }
       }
@@ -267,20 +269,17 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
       <div>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Importar Extrato Bancário</h1>
         <p className="text-slate-600">
-          Faça upload do seu extrato em CSV ou PDF e deixe a IA processar automaticamente
+          Upload de extrato CSV ou PDF - processamento 100% automático com IA
         </p>
       </div>
 
-      {/* Instruções */}
       <Alert className="border-blue-200 bg-blue-50">
         <AlertCircle className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-900">
-          <strong>Melhor resultado:</strong> Use extratos em formato CSV exportados diretamente do site do seu banco. 
-          PDFs também funcionam, mas devem ter texto selecionável (não escaneados).
+          <strong>Melhor resultado:</strong> Exporte CSV do site do banco. PDFs funcionam se tiverem texto selecionável (não foto/scan).
         </AlertDescription>
       </Alert>
 
-      {/* Upload Area */}
       <Card className="border-2 border-dashed border-slate-200">
         <CardContent className="p-8">
           <div
@@ -301,7 +300,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
                   Arraste seu extrato aqui
                 </h3>
                 <p className="text-slate-600 mb-4">
-                  ou clique para selecionar do seu computador
+                  ou clique para selecionar
                 </p>
                 <input
                   type="file"
@@ -316,7 +315,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
                   </Button>
                 </label>
                 <p className="text-xs text-slate-500 mt-4">
-                  Formatos aceitos: CSV, PDF, PNG, JPG (máx. 10MB)
+                  CSV, PDF, PNG ou JPG (máx. 10MB)
                 </p>
               </>
             ) : (
@@ -335,7 +334,6 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
                   </p>
                 </div>
 
-                {/* Campo para nome da conta bancária */}
                 {status === "idle" && (
                   <div className="max-w-md mx-auto space-y-2">
                     <Label htmlFor="bank-account-name" className="text-left block">
@@ -345,11 +343,11 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
                       id="bank-account-name"
                       value={bankAccountName}
                       onChange={(e) => setBankAccountName(e.target.value)}
-                      placeholder="Ex: C6 Bank, Nubank, Banco do Brasil..."
+                      placeholder="Ex: C6 Bank PJ, Nubank, Bradesco..."
                       className="text-center"
                     />
                     <p className="text-xs text-slate-500">
-                      Isso ajudará a identificar de qual conta são essas transações
+                      Para identificar de qual conta são as transações
                     </p>
                   </div>
                 )}
@@ -369,7 +367,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
                           <span className="text-green-700 font-semibold">{message}</span>
                         </>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-2 w-full">
                           <div className="flex items-center justify-center gap-2">
                             <AlertCircle className="w-5 h-5 text-rose-600" />
                             <span className="text-rose-700 font-semibold">{message}</span>
@@ -449,9 +447,9 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
               1
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Faça upload do extrato</h4>
+              <h4 className="font-semibold text-slate-900 mb-1">Upload do extrato</h4>
               <p className="text-sm text-slate-600">
-                Exporte o extrato do site do seu banco em formato CSV ou PDF (com texto selecionável)
+                Envie seu extrato em CSV ou PDF (preferência: CSV do site do banco)
               </p>
             </div>
           </div>
@@ -461,9 +459,9 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
               2
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Informe a conta bancária</h4>
+              <h4 className="font-semibold text-slate-900 mb-1">Extração automática</h4>
               <p className="text-sm text-slate-600">
-                Digite o nome da conta (ex: C6 Bank, Nubank) para identificar as transações
+                IA analisa o arquivo e extrai todas as transações (data, valor, descrição, tipo)
               </p>
             </div>
           </div>
@@ -473,9 +471,9 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
               3
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900 mb-1">IA processa automaticamente</h4>
+              <h4 className="font-semibold text-slate-900 mb-1">Categorização inteligente</h4>
               <p className="text-sm text-slate-600">
-                Nossa inteligência artificial extrai todas as transações, identificando datas, valores e descrições
+                Cada transação é categorizada automaticamente (vendas, salários, aluguel, etc.)
               </p>
             </div>
           </div>
@@ -485,28 +483,16 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
               4
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Categorização inteligente</h4>
+              <h4 className="font-semibold text-slate-900 mb-1">Pronto!</h4>
               <p className="text-sm text-slate-600">
-                As transações são automaticamente categorizadas (vendas, despesas, impostos, etc.) para facilitar a análise
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">
-              5
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Pronto para análise</h4>
-              <p className="text-sm text-slate-600">
-                Visualize seus dados no dashboard com gráficos e relatórios automáticos, separados por conta
+                Visualize tudo no dashboard com análises, gráficos e relatórios automáticos
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Dicas para melhor resultado */}
+      {/* Dicas */}
       <Card className="border-orange-200 bg-orange-50">
         <CardHeader>
           <CardTitle className="text-orange-900 flex items-center gap-2">
@@ -515,11 +501,11 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-orange-900 space-y-2">
-          <p>✓ <strong>Melhor opção:</strong> Exporte extrato em CSV do site do banco</p>
-          <p>✓ PDFs devem ter texto selecionável (não escaneados ou fotos)</p>
-          <p>✓ Extratos muito grandes: divida em períodos menores (1-3 meses)</p>
-          <p>✓ Certifique-se de que o arquivo contém data, descrição e valor</p>
-          <p>✓ Use nomes de contas descritivos (ex: "C6 Bank Conta PJ")</p>
+          <p>✓ <strong>CSV do banco:</strong> Melhor formato, 100% de precisão</p>
+          <p>✓ <strong>PDF:</strong> Deve ter texto selecionável (não foto/scan)</p>
+          <p>✓ <strong>Período:</strong> Recomendado 1-3 meses por arquivo</p>
+          <p>✓ <strong>Tamanho:</strong> Máximo 10MB por arquivo</p>
+          <p>✓ <strong>Nome da conta:</strong> Use nomes claros (ex: "Nubank PJ")</p>
         </CardContent>
       </Card>
     </div>
