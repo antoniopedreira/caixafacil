@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { format } from 'date-fns';
 
 const CATEGORY_NAMES = {
@@ -24,8 +22,16 @@ const CATEGORY_NAMES = {
   outras_despesas: "Outras Despesas"
 };
 
-export default function ExpandedTransactionList({ transactions, type, onClose }) {
-  const [viewMode, setViewMode] = useState("categoria");
+// Função para formatar valores com ponto para milhares
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+};
+
+export default function ExpandedTransactionList({ transactions, type }) {
+  const [expandedCategory, setExpandedCategory] = useState(null);
 
   const groupedByCategory = useMemo(() => {
     const groups = {};
@@ -46,185 +52,83 @@ export default function ExpandedTransactionList({ transactions, type, onClose })
     return Object.values(groups).sort((a, b) => b.total - a.total);
   }, [transactions]);
 
-  const sortedByDate = useMemo(() => {
-    return [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [transactions]);
-
-  const sortedByValue = useMemo(() => {
-    return [...transactions].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-  }, [transactions]);
-
-  const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const toggleCategory = (category) => {
+    setExpandedCategory(expandedCategory === category ? null : category);
+  };
 
   return (
-    <Card className="border-0 shadow-lg mt-4">
-      <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">
-            {type === 'income' ? '💰 Entradas do Mês' : '💸 Saídas do Mês'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <ChevronUp className="w-5 h-5 text-slate-600" />
-          </button>
-        </div>
-
-        <div className="flex gap-3">
-          <Button
-            onClick={() => setViewMode("categoria")}
-            variant={viewMode === "categoria" ? "default" : "outline"}
-            className={viewMode === "categoria" ? "bg-blue-500 hover:bg-blue-600" : ""}
-          >
-            Categoria
-          </Button>
-          <Button
-            onClick={() => setViewMode("data")}
-            variant={viewMode === "data" ? "default" : "outline"}
-            className={viewMode === "data" ? "bg-blue-500 hover:bg-blue-600" : ""}
-          >
-            Data
-          </Button>
-          <Button
-            onClick={() => setViewMode("valor")}
-            variant={viewMode === "valor" ? "default" : "outline"}
-            className={viewMode === "valor" ? "bg-blue-500 hover:bg-blue-600" : ""}
-          >
-            Valor
-          </Button>
-        </div>
-
-        <div className={`p-3 rounded-lg ${
-          type === 'income' ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-50 border border-rose-200'
-        }`}>
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-slate-700">
-              Total de {transactions.length} transação(ões)
-            </span>
-            <span className={`text-lg font-bold ${
-              type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-            }`}>
-              R$ {total.toFixed(2).replace('.', ',')}
-            </span>
+    <div className={`ml-4 mt-2 rounded-lg ${
+      type === 'income' ? 'bg-emerald-50/50' : 'bg-rose-50/50'
+    }`}>
+      <div className="p-3 space-y-1">
+        {groupedByCategory.length === 0 ? (
+          <div className="text-center py-4 text-slate-500 text-sm">
+            Nenhuma transação encontrada
           </div>
-        </div>
-
-        {viewMode === "categoria" && (
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {groupedByCategory.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
-                Nenhuma transação encontrada
-              </div>
-            ) : (
-              groupedByCategory.map((group) => (
-                <div
-                  key={group.category}
-                  className="p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="font-semibold text-slate-900">{group.categoryName}</p>
-                      <p className="text-xs text-slate-500">
-                        {group.transactions.length} {group.transactions.length === 1 ? 'transação' : 'transações'}
-                      </p>
-                    </div>
-                    <p className={`text-lg font-bold ${
-                      type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                    }`}>
-                      R$ {group.total.toFixed(2).replace('.', ',')}
-                    </p>
-                  </div>
+        ) : (
+          groupedByCategory.map((group) => (
+            <div key={group.category}>
+              {/* Linha da categoria */}
+              <div
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                  expandedCategory === group.category
+                    ? type === 'income' 
+                      ? 'bg-emerald-100 hover:bg-emerald-100' 
+                      : 'bg-rose-100 hover:bg-rose-100'
+                    : 'hover:bg-white'
+                }`}
+                onClick={() => toggleCategory(group.category)}
+              >
+                <div className="flex items-center gap-2">
+                  {expandedCategory === group.category ? (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  )}
+                  <span className="font-medium text-slate-900 text-sm">
+                    {group.categoryName}
+                  </span>
                 </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {viewMode === "data" && (
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {sortedByDate.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
-                Nenhuma transação encontrada
+                <span className={`font-bold text-sm ${
+                  type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                }`}>
+                  R$ {formatCurrency(group.total)}
+                </span>
               </div>
-            ) : (
-              sortedByDate.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="min-w-[80px]">
-                        <p className="text-sm font-medium text-slate-900">
-                          {format(new Date(transaction.date), "dd/MM/yyyy")}
-                        </p>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-900">
-                          {transaction.description}
-                        </p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {CATEGORY_NAMES[transaction.category] || transaction.category}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right ml-4">
-                    <p className={`text-base font-bold ${
-                      type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                    }`}>
-                      R$ {Math.abs(transaction.amount).toFixed(2).replace('.', ',')}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
 
-        {viewMode === "valor" && (
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {sortedByValue.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
-                Nenhuma transação encontrada
-              </div>
-            ) : (
-              sortedByValue.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="min-w-[80px]">
-                        <p className="text-sm font-medium text-slate-900">
-                          {format(new Date(transaction.date), "dd/MM/yyyy")}
-                        </p>
+              {/* Lista de transações da categoria */}
+              {expandedCategory === group.category && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {group.transactions
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .map((transaction) => (
+                      <div
+                        key={transaction.id}
+                        className="flex items-center justify-between p-2 bg-white rounded-lg text-sm"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-slate-500 min-w-[70px]">
+                              {format(new Date(transaction.date), "dd/MM/yyyy")}
+                            </span>
+                            <span className="text-slate-900">
+                              {transaction.description}
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`font-semibold text-sm ml-4 ${
+                          type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                        }`}>
+                          R$ {formatCurrency(Math.abs(transaction.amount))}
+                        </span>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-slate-900">
-                          {transaction.description}
-                        </p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {CATEGORY_NAMES[transaction.category] || transaction.category}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right ml-4">
-                    <p className={`text-base font-bold ${
-                      type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                    }`}>
-                      R$ {Math.abs(transaction.amount).toFixed(2).replace('.', ',')}
-                    </p>
-                  </div>
+                    ))}
                 </div>
-              ))
-            )}
-          </div>
+              )}
+            </div>
+          ))
         )}
       </div>
-    </Card>
+    </div>
   );
 }

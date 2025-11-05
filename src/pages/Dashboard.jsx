@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -149,32 +150,31 @@ export default function Dashboard() {
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
-        <MonthSummaryCards
-          income={monthStats.income}
-          expense={monthStats.expense}
-          balance={monthStats.balance}
-          onClickIncome={() => handleToggleCard('income')}
-          onClickExpense={() => handleToggleCard('expense')}
-          expandedCard={expandedCard}
-        />
-        
-        {expandedCard === 'income' && incomeTransactions.length > 0 && (
-          <ExpandedTransactionList
-            transactions={incomeTransactions}
-            type="income"
-            onClose={() => setExpandedCard(null)}
-          />
-        )}
-        
-        {expandedCard === 'expense' && expenseTransactions.length > 0 && (
-          <ExpandedTransactionList
-            transactions={expenseTransactions}
-            type="expense"
-            onClose={() => setExpandedCard(null)}
-          />
-        )}
-      </div>
+      <MonthSummaryCards
+        income={monthStats.income}
+        expense={monthStats.expense}
+        balance={monthStats.balance}
+        onClickIncome={() => handleToggleCard('income')}
+        onClickExpense={() => handleToggleCard('expense')}
+        expandedCard={expandedCard}
+      >
+        {{
+          income: incomeTransactions.length > 0 && (
+            <ExpandedTransactionList
+              transactions={incomeTransactions}
+              type="income"
+              onClose={() => setExpandedCard(null)} // Re-added onClose based on common practice for expanded lists.
+            />
+          ),
+          expense: expenseTransactions.length > 0 && (
+            <ExpandedTransactionList
+              transactions={expenseTransactions}
+              type="expense"
+              onClose={() => setExpandedCard(null)} // Re-added onClose based on common practice for expanded lists.
+            />
+          )
+        }}
+      </MonthSummaryCards>
 
       {transactions.length === 0 && (
         <Alert className="border-blue-200 bg-blue-50">
