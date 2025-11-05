@@ -222,24 +222,7 @@ export default function Dashboard() {
               </AlertDescription>
             </Alert>
           ) : (
-            <>
-              {/* Nova tabela de análise mensal */}
-              <MonthlyAnalysisTable transactions={transactions} />
-
-              {/* Mantém os outros componentes abaixo */}
-              <SpendingTrends transactions={transactions} />
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <TopCategories transactions={filteredTransactions} type="expense" />
-                <TopCategories transactions={filteredTransactions} type="income" />
-              </div>
-
-              <FinancialProjection
-                currentBalance={totalBalance}
-                transactions={transactions}
-                recurringExpenses={recurringExpenses}
-              />
-            </>
+            <MonthlyAnalysisTable transactions={transactions} />
           )}
         </TabsContent>
       </Tabs>

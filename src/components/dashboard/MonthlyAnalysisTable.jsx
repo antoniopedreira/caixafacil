@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +38,6 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-// Função para gerar análise - definida ANTES de ser usada
 const generateAnalysis = (data) => {
   if (data.length < 2) return null;
   
@@ -54,7 +52,6 @@ const generateAnalysis = (data) => {
     ? ((currentMonth.expense - previousMonth.expense) / previousMonth.expense * 100)
     : 0;
   
-  // Identifica maiores gastos do mês atual
   const topExpenses = Object.entries(currentMonth.expenseByCategory)
     .sort((a, b) => b[1].total - a[1].total)
     .slice(0, 3);
@@ -70,7 +67,8 @@ const generateAnalysis = (data) => {
 
 export default function MonthlyAnalysisTable({ transactions }) {
   const [showMonths, setShowMonths] = useState(6);
-  const [expandedMonth, setExpandedMonth] = useState(null);
+  const [expandedRow, setExpandedRow] = useState(null); // 'income', 'expense', ou null
+  const [expandedMonth, setExpandedMonth] = useState(null); // índice do mês expandido
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
@@ -78,12 +76,10 @@ export default function MonthlyAnalysisTable({ transactions }) {
     const now = new Date();
     const data = [];
     
-    // Encontra a data da última transação
     const lastTransactionDate = transactions.length > 0
       ? max(transactions.map(t => new Date(t.date)))
       : now;
     
-    // Gera dados dos últimos meses
     const monthsToShow = Math.min(showMonths, 12);
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const date = subMonths(now, i);
@@ -94,7 +90,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
         isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
       );
       
-      // Agrupa por categoria
       const incomeByCategory = {};
       const expenseByCategory = {};
       
@@ -127,7 +122,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
       });
     }
     
-    // Análise automática - agora usando a função definida acima
     const analysisText = generateAnalysis(data);
     
     return {
@@ -136,6 +130,18 @@ export default function MonthlyAnalysisTable({ transactions }) {
       analysis: analysisText
     };
   }, [transactions, showMonths]);
+
+  const toggleRow = (rowType) => {
+    if (expandedRow === rowType) {
+      setExpandedRow(null);
+      setExpandedMonth(null);
+      setExpandedCategory(null);
+    } else {
+      setExpandedRow(rowType);
+      setExpandedMonth(null);
+      setExpandedCategory(null);
+    }
+  };
 
   const toggleMonth = (monthIndex) => {
     setExpandedMonth(expandedMonth === monthIndex ? null : monthIndex);
@@ -180,192 +186,288 @@ export default function MonthlyAnalysisTable({ transactions }) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            {monthsData.map((month, index) => (
-              <div key={index}>
-                <div
-                  className={`rounded-lg transition-all cursor-pointer ${
-                    month.isCurrentMonth
-                      ? 'bg-blue-50 border-2 border-blue-400'
-                      : expandedMonth === index
-                      ? 'bg-slate-50'
-                      : 'hover:bg-slate-50'
-                  }`}
-                  onClick={() => toggleMonth(index)}
-                >
-                  <div className="p-4">
-                    <div className="grid grid-cols-12 gap-4 items-center">
-                      <div className="col-span-3 flex items-center gap-2">
-                        {expandedMonth === index ? (
-                          <ChevronDown className="w-4 h-4 text-slate-400" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-slate-400" />
+          {/* Tabela horizontal */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left p-3 font-semibold text-slate-900 sticky left-0 bg-white z-10">
+                    
+                  </th>
+                  {monthsData.map((month, index) => (
+                    <th key={index} className="p-3 text-center min-w-[140px]">
+                      <div className={`${
+                        month.isCurrentMonth 
+                          ? 'bg-blue-100 text-blue-900 font-bold rounded-lg p-2' 
+                          : 'text-slate-700'
+                      }`}>
+                        <div className="text-sm">{month.month}</div>
+                        {month.isCurrentMonth && (
+                          <Badge className="bg-blue-600 text-white text-xs mt-1">
+                            Atual
+                          </Badge>
                         )}
-                        <div>
-                          <span className={`font-semibold ${
-                            month.isCurrentMonth ? 'text-blue-900' : 'text-slate-900'
-                          }`}>
-                            {month.fullMonth}
-                          </span>
-                          {month.isCurrentMonth && (
-                            <Badge className="ml-2 bg-blue-600 text-white text-xs">
-                              Mês Atual
-                            </Badge>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Linha de Entradas */}
+                <tr className={`border-b border-slate-100 hover:bg-emerald-50 cursor-pointer transition-colors ${
+                  expandedRow === 'income' ? 'bg-emerald-50' : ''
+                }`}>
+                  <td 
+                    className="p-3 font-semibold text-slate-900 sticky left-0 bg-white z-10"
+                    onClick={() => toggleRow('income')}
+                  >
+                    <div className="flex items-center gap-2">
+                      {expandedRow === 'income' ? (
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      )}
+                      <span className="text-emerald-700">Entradas</span>
+                    </div>
+                  </td>
+                  {monthsData.map((month, index) => (
+                    <td key={index} className="p-3 text-center">
+                      <div className="font-bold text-emerald-600">
+                        R$ {formatCurrency(month.income)}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Detalhamento de Entradas */}
+                {expandedRow === 'income' && (
+                  <tr>
+                    <td colSpan={monthsData.length + 1} className="p-0">
+                      <div className="bg-emerald-50 p-4">
+                        <p className="text-sm font-semibold text-emerald-900 mb-3">
+                          Clique em um mês para ver o detalhamento:
+                        </p>
+                        <div className="grid gap-2" style={{ gridTemplateColumns: `120px repeat(${monthsData.length}, 1fr)` }}>
+                          {/* Cabeçalho de categorias */}
+                          <div></div>
+                          {monthsData.map((month, index) => (
+                            <div key={index} className="text-center">
+                              <Button
+                                variant={expandedMonth === index ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => toggleMonth(index)}
+                                className="w-full text-xs"
+                              >
+                                {month.month}
+                              </Button>
+                            </div>
+                          ))}
+                          
+                          {/* Categorias de entrada */}
+                          {expandedMonth !== null && (
+                            <>
+                              {Object.entries(monthsData[expandedMonth].incomeByCategory)
+                                .sort((a, b) => b[1].total - a[1].total)
+                                .map(([category, data]) => (
+                                  <React.Fragment key={category}>
+                                    <div 
+                                      className="text-sm text-slate-700 font-medium p-2 hover:bg-emerald-100 rounded cursor-pointer"
+                                      onClick={() => toggleCategory(`income-${category}`)}
+                                    >
+                                      <div className="flex items-center gap-1">
+                                        {expandedCategory === `income-${category}` ? (
+                                          <ChevronDown className="w-3 h-3" />
+                                        ) : (
+                                          <ChevronRight className="w-3 h-3" />
+                                        )}
+                                        {CATEGORY_NAMES[category] || category}
+                                      </div>
+                                    </div>
+                                    {monthsData.map((m, idx) => (
+                                      <div key={idx} className={`text-center p-2 ${idx === expandedMonth ? 'bg-white rounded' : ''}`}>
+                                        {idx === expandedMonth && (
+                                          <span className="text-sm font-semibold text-emerald-700">
+                                            R$ {formatCurrency(data.total)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                    
+                                    {/* Transações da categoria */}
+                                    {expandedCategory === `income-${category}` && (
+                                      <>
+                                        <div className="col-span-full ml-8 space-y-1 mt-2">
+                                          {data.transactions
+                                            .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+                                            .map((transaction) => (
+                                              <div
+                                                key={transaction.id}
+                                                className="flex items-center justify-between p-2 bg-white rounded text-xs hover:bg-emerald-100 cursor-pointer"
+                                                onClick={() => setSelectedTransaction(transaction)}
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-slate-500">
+                                                    {format(new Date(transaction.date), "dd/MM")}
+                                                  </span>
+                                                  <span className="text-slate-900">
+                                                    {transaction.description}
+                                                  </span>
+                                                </div>
+                                                <span className="font-semibold text-emerald-600">
+                                                  R$ {formatCurrency(Math.abs(transaction.amount))}
+                                                </span>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                            </>
                           )}
                         </div>
                       </div>
-
-                      <div className="col-span-3 text-right">
-                        <p className="text-xs text-slate-600 mb-1">Entradas</p>
-                        <p className="text-lg font-bold text-emerald-600">
-                          R$ {formatCurrency(month.income)}
-                        </p>
-                      </div>
-
-                      <div className="col-span-3 text-right">
-                        <p className="text-xs text-slate-600 mb-1">Saídas</p>
-                        <p className="text-lg font-bold text-rose-600">
-                          R$ {formatCurrency(month.expense)}
-                        </p>
-                      </div>
-
-                      <div className="col-span-3 text-right">
-                        <p className="text-xs text-slate-600 mb-1">Resultado</p>
-                        <p className={`text-lg font-bold ${
-                          month.balance >= 0 ? 'text-blue-600' : 'text-rose-600'
-                        }`}>
-                          R$ {formatCurrency(month.balance)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {expandedMonth === index && (
-                  <div className="ml-6 mt-2 space-y-2 mb-4">
-                    {Object.keys(month.incomeByCategory).length > 0 && (
-                      <div className="bg-emerald-50 rounded-lg p-3">
-                        <p className="text-sm font-semibold text-emerald-900 mb-2">
-                          Detalhamento das Entradas
-                        </p>
-                        {Object.entries(month.incomeByCategory)
-                          .sort((a, b) => b[1].total - a[1].total)
-                          .map(([category, data]) => (
-                            <div key={category}>
-                              <div
-                                className="flex items-center justify-between p-2 hover:bg-emerald-100 rounded cursor-pointer"
-                                onClick={() => toggleCategory(`income-${category}`)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {expandedCategory === `income-${category}` ? (
-                                    <ChevronDown className="w-3 h-3 text-slate-400" />
-                                  ) : (
-                                    <ChevronRight className="w-3 h-3 text-slate-400" />
-                                  )}
-                                  <span className="text-sm text-slate-900">
-                                    {CATEGORY_NAMES[category] || category}
-                                  </span>
-                                </div>
-                                <span className="text-sm font-semibold text-emerald-700">
-                                  R$ {formatCurrency(data.total)}
-                                </span>
-                              </div>
-
-                              {expandedCategory === `income-${category}` && (
-                                <div className="ml-6 mt-1 space-y-1">
-                                  {data.transactions
-                                    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-                                    .map((transaction) => (
-                                      <div
-                                        key={transaction.id}
-                                        className="flex items-center justify-between p-2 bg-white rounded text-xs hover:bg-emerald-50 cursor-pointer"
-                                        onClick={() => setSelectedTransaction(transaction)}
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-slate-500">
-                                            {format(new Date(transaction.date), "dd/MM")}
-                                          </span>
-                                          <span className="text-slate-900">
-                                            {transaction.description}
-                                          </span>
-                                        </div>
-                                        <span className="font-semibold text-emerald-600">
-                                          R$ {formatCurrency(Math.abs(transaction.amount))}
-                                        </span>
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-
-                    {Object.keys(month.expenseByCategory).length > 0 && (
-                      <div className="bg-rose-50 rounded-lg p-3">
-                        <p className="text-sm font-semibold text-rose-900 mb-2">
-                          Detalhamento das Saídas
-                        </p>
-                        {Object.entries(month.expenseByCategory)
-                          .sort((a, b) => b[1].total - a[1].total)
-                          .map(([category, data]) => (
-                            <div key={category}>
-                              <div
-                                className="flex items-center justify-between p-2 hover:bg-rose-100 rounded cursor-pointer"
-                                onClick={() => toggleCategory(`expense-${category}`)}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {expandedCategory === `expense-${category}` ? (
-                                    <ChevronDown className="w-3 h-3 text-slate-400" />
-                                  ) : (
-                                    <ChevronRight className="w-3 h-3 text-slate-400" />
-                                  )}
-                                  <span className="text-sm text-slate-900">
-                                    {CATEGORY_NAMES[category] || category}
-                                  </span>
-                                </div>
-                                <span className="text-sm font-semibold text-rose-700">
-                                  R$ {formatCurrency(data.total)}
-                                </span>
-                              </div>
-
-                              {expandedCategory === `expense-${category}` && (
-                                <div className="ml-6 mt-1 space-y-1">
-                                  {data.transactions
-                                    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-                                    .map((transaction) => (
-                                      <div
-                                        key={transaction.id}
-                                        className="flex items-center justify-between p-2 bg-white rounded text-xs hover:bg-rose-50 cursor-pointer"
-                                        onClick={() => setSelectedTransaction(transaction)}
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-slate-500">
-                                            {format(new Date(transaction.date), "dd/MM")}
-                                          </span>
-                                          <span className="text-slate-900">
-                                            {transaction.description}
-                                          </span>
-                                        </div>
-                                        <span className="font-semibold text-rose-600">
-                                          R$ {formatCurrency(Math.abs(transaction.amount))}
-                                        </span>
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
+                    </td>
+                  </tr>
                 )}
-              </div>
-            ))}
+
+                {/* Linha de Saídas */}
+                <tr className={`border-b border-slate-100 hover:bg-rose-50 cursor-pointer transition-colors ${
+                  expandedRow === 'expense' ? 'bg-rose-50' : ''
+                }`}>
+                  <td 
+                    className="p-3 font-semibold text-slate-900 sticky left-0 bg-white z-10"
+                    onClick={() => toggleRow('expense')}
+                  >
+                    <div className="flex items-center gap-2">
+                      {expandedRow === 'expense' ? (
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      )}
+                      <span className="text-rose-700">Saídas</span>
+                    </div>
+                  </td>
+                  {monthsData.map((month, index) => (
+                    <td key={index} className="p-3 text-center">
+                      <div className="font-bold text-rose-600">
+                        R$ {formatCurrency(month.expense)}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+
+                {/* Detalhamento de Saídas */}
+                {expandedRow === 'expense' && (
+                  <tr>
+                    <td colSpan={monthsData.length + 1} className="p-0">
+                      <div className="bg-rose-50 p-4">
+                        <p className="text-sm font-semibold text-rose-900 mb-3">
+                          Clique em um mês para ver o detalhamento:
+                        </p>
+                        <div className="grid gap-2" style={{ gridTemplateColumns: `120px repeat(${monthsData.length}, 1fr)` }}>
+                          <div></div>
+                          {monthsData.map((month, index) => (
+                            <div key={index} className="text-center">
+                              <Button
+                                variant={expandedMonth === index ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => toggleMonth(index)}
+                                className="w-full text-xs"
+                              >
+                                {month.month}
+                              </Button>
+                            </div>
+                          ))}
+                          
+                          {expandedMonth !== null && (
+                            <>
+                              {Object.entries(monthsData[expandedMonth].expenseByCategory)
+                                .sort((a, b) => b[1].total - a[1].total)
+                                .map(([category, data]) => (
+                                  <React.Fragment key={category}>
+                                    <div 
+                                      className="text-sm text-slate-700 font-medium p-2 hover:bg-rose-100 rounded cursor-pointer"
+                                      onClick={() => toggleCategory(`expense-${category}`)}
+                                    >
+                                      <div className="flex items-center gap-1">
+                                        {expandedCategory === `expense-${category}` ? (
+                                          <ChevronDown className="w-3 h-3" />
+                                        ) : (
+                                          <ChevronRight className="w-3 h-3" />
+                                        )}
+                                        {CATEGORY_NAMES[category] || category}
+                                      </div>
+                                    </div>
+                                    {monthsData.map((m, idx) => (
+                                      <div key={idx} className={`text-center p-2 ${idx === expandedMonth ? 'bg-white rounded' : ''}`}>
+                                        {idx === expandedMonth && (
+                                          <span className="text-sm font-semibold text-rose-700">
+                                            R$ {formatCurrency(data.total)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                    
+                                    {expandedCategory === `expense-${category}` && (
+                                      <>
+                                        <div className="col-span-full ml-8 space-y-1 mt-2">
+                                          {data.transactions
+                                            .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+                                            .map((transaction) => (
+                                              <div
+                                                key={transaction.id}
+                                                className="flex items-center justify-between p-2 bg-white rounded text-xs hover:bg-rose-100 cursor-pointer"
+                                                onClick={() => setSelectedTransaction(transaction)}
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-slate-500">
+                                                    {format(new Date(transaction.date), "dd/MM")}
+                                                  </span>
+                                                  <span className="text-slate-900">
+                                                    {transaction.description}
+                                                  </span>
+                                                </div>
+                                                <span className="font-semibold text-rose-600">
+                                                  R$ {formatCurrency(Math.abs(transaction.amount))}
+                                                </span>
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                {/* Linha de Resultado do Período */}
+                <tr className="border-t-2 border-slate-300 bg-slate-50">
+                  <td className="p-3 font-bold text-slate-900 sticky left-0 bg-slate-50 z-10">
+                    Resultado do Período
+                  </td>
+                  {monthsData.map((month, index) => (
+                    <td key={index} className="p-3 text-center">
+                      <div className={`font-bold text-lg ${
+                        month.balance >= 0 ? 'text-blue-600' : 'text-rose-600'
+                      }`}>
+                        R$ {formatCurrency(month.balance)}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
 
+      {/* Análise automática */}
       {analysis && (
         <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-blue-50">
           <CardHeader>
@@ -468,6 +570,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
         </Card>
       )}
 
+      {/* Modal de detalhes da transação */}
       <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
