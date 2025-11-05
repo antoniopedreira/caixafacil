@@ -54,6 +54,15 @@ export default function UploadStatement() {
     }
   };
 
+  const readFileAsText = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    });
+  };
+
   const processFile = async () => {
     if (!file) return;
     
@@ -66,33 +75,77 @@ export default function UploadStatement() {
 
     setStatus("uploading");
     setProgress(10);
-    setMessage("Enviando arquivo...");
+    setMessage("Processando arquivo...");
     setErrorDetails("");
 
     try {
-      // 1. Upload do arquivo
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      let fileContent = '';
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      
+      // Para CSV, lê o conteúdo diretamente
+      if (fileExtension === 'csv') {
+        setProgress(20);
+        setMessage("Lendo arquivo CSV...");
+        fileContent = await readFileAsText(file);
+      } else {
+        // Para outros formatos, faz upload primeiro
+        setMessage("Enviando arquivo...");
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        
+        // Busca o conteúdo do arquivo
+        const response = await fetch(file_url);
+        if (fileExtension === 'pdf') {
+          // Para PDF, precisamos usar o file_url com o LLM
+          fileContent = file_url;
+        } else {
+          fileContent = await response.text();
+        }
+      }
       
       setProgress(30);
       setStatus("processing");
       setMessage("Extraindo transações com IA... aguarde até 40 segundos");
 
-      // 2. Extrai dados usando LLM diretamente (sem ExtractDataFromUploadedFile)
-      const extractionPrompt = `Você é um especialista em análise de extratos bancários brasileiros.
+      // Monta o prompt baseado no tipo de arquivo
+      const extractionPrompt = fileExtension === 'pdf'
+        ? `Você é um especialista em análise de extratos bancários brasileiros.
 
-Analise o arquivo anexado e extraia TODAS as transações bancárias encontradas.
+Analise o PDF anexado e extraia TODAS as transações bancárias encontradas.
 
 Para cada transação, identifique:
 - **data**: Data no formato YYYY-MM-DD (se o ano não estiver explícito, use 2025)
-- **description**: Descrição da transação (combine descrição + fornecedor se houver)
+- **description**: Descrição completa da transação
 - **amount**: Valor numérico absoluto (apenas número, sem R$, pontos ou vírgulas)
 - **type**: "income" para CRÉDITO/ENTRADA ou "expense" para DÉBITO/SAÍDA
 
+Retorne APENAS um JSON no formato:
+{
+  "transactions": [
+    {
+      "date": "2025-01-05",
+      "description": "Pagamento - Fornecedor XYZ",
+      "amount": 150.00,
+      "type": "expense"
+    }
+  ]
+}`
+        : `Você é um especialista em análise de extratos bancários brasileiros.
+
+Analise o extrato abaixo e extraia TODAS as transações bancárias encontradas.
+
+Para cada transação, identifique:
+- **data**: Data no formato YYYY-MM-DD (se o ano não estiver explícito, use 2025)
+- **description**: Descrição completa da transação (combine colunas Descrição + Fornecedor se houver)
+- **amount**: Valor numérico absoluto (converta 1.234,56 para 1234.56)
+- **type**: "income" para CRÉDITO/ENTRADA ou "expense" para DÉBITO/SAÍDA
+
 **IMPORTANTE:**
-- Extraia TODAS as linhas de movimentação
-- Converta valores de formato brasileiro (1.234,56) para número puro (1234.56)
-- Se houver colunas "Tipo", "Natureza" ou similar, use para definir income/expense
+- Extraia TODAS as linhas de transação
 - Ignore cabeçalhos, totais e linhas de saldo
+- Se houver coluna "Tipo" ou "Natureza", use para definir income/expense
+
+**Conteúdo do extrato:**
+${fileContent}
 
 Retorne APENAS um JSON no formato:
 {
@@ -106,9 +159,8 @@ Retorne APENAS um JSON no formato:
   ]
 }`;
 
-      const extractionResult = await base44.integrations.Core.InvokeLLM({
+      const llmParams = {
         prompt: extractionPrompt,
-        file_urls: file_url,
         response_json_schema: {
           type: "object",
           properties: {
@@ -128,12 +180,19 @@ Retorne APENAS um JSON no formato:
           },
           required: ["transactions"]
         }
-      });
+      };
+
+      // Para PDF, adiciona o file_urls
+      if (fileExtension === 'pdf') {
+        llmParams.file_urls = fileContent;
+      }
+
+      const extractionResult = await base44.integrations.Core.InvokeLLM(llmParams);
 
       setProgress(60);
 
       if (!extractionResult?.transactions || extractionResult.transactions.length === 0) {
-        throw new Error("Nenhuma transação foi encontrada no arquivo. Certifique-se de que é um extrato bancário válido.");
+        throw new Error("Nenhuma transação foi encontrada no arquivo. Certifique-se de que é um extrato bancário válido com movimentações.");
       }
 
       let transactions = extractionResult.transactions;
@@ -144,6 +203,8 @@ Retorne APENAS um JSON no formato:
           console.warn('Transação inválida ignorada:', t);
           return false;
         }
+        // Remove valores zerados
+        if (t.amount === 0) return false;
         return true;
       });
       
@@ -154,59 +215,50 @@ Retorne APENAS um JSON no formato:
       setMessage(`Categorizando ${transactions.length} transações com IA...`);
       setProgress(75);
 
-      // 3. Categoriza em lote
-      const categorizationPrompt = `Categorize cada uma das ${transactions.length} transações abaixo.
+      // Categoriza em lote (máximo 50 por vez para não sobrecarregar)
+      const batchSize = 50;
+      let categories = [];
+      
+      for (let i = 0; i < transactions.length; i += batchSize) {
+        const batch = transactions.slice(i, i + batchSize);
+        
+        const categorizationPrompt = `Categorize cada uma das ${batch.length} transações abaixo.
 
-**Categorias para RECEITAS (income):**
-- vendas: Vendas de produtos/serviços
-- servicos: Prestação de serviços
-- outras_receitas: Outras receitas
-
-**Categorias para DESPESAS (expense):**
-- salarios_funcionarios: Salários e folha
-- fornecedores: Pagamentos a fornecedores
-- aluguel: Aluguel
-- contas_servicos: Luz, água, internet, telefone
-- impostos_taxas: Impostos e taxas
-- marketing_publicidade: Marketing
-- equipamentos_materiais: Equipamentos e materiais
-- manutencao: Manutenção
-- combustivel_transporte: Combustível e transporte
-- outras_despesas: Outras despesas
+**RECEITAS (income):** vendas, servicos, outras_receitas
+**DESPESAS (expense):** salarios_funcionarios, fornecedores, aluguel, contas_servicos, impostos_taxas, marketing_publicidade, equipamentos_materiais, manutencao, combustivel_transporte, outras_despesas
 
 **Transações:**
-${transactions.map((t, i) => `${i + 1}. "${t.description}" | ${t.type} | R$ ${t.amount}`).join('\n')}
+${batch.map((t, idx) => `${idx + 1}. "${t.description}" | ${t.type} | R$ ${t.amount}`).join('\n')}
 
-Retorne um array com as categorias NA MESMA ORDEM das transações.
-Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
+Retorne um array com as categorias NA MESMA ORDEM:`;
 
-      let categories = [];
-      try {
-        const catResult = await base44.integrations.Core.InvokeLLM({
-          prompt: categorizationPrompt,
-          response_json_schema: {
-            type: "object",
-            properties: {
-              categories: {
-                type: "array",
-                items: { type: "string" }
+        try {
+          const catResult = await base44.integrations.Core.InvokeLLM({
+            prompt: categorizationPrompt,
+            response_json_schema: {
+              type: "object",
+              properties: {
+                categories: {
+                  type: "array",
+                  items: { type: "string" }
+                }
               }
             }
-          }
-        });
-        
-        categories = catResult.categories || [];
-      } catch (error) {
-        console.warn('Erro na categorização, usando padrão:', error);
-        categories = transactions.map(t => 
-          t.type === 'income' ? 'outras_receitas' : 'outras_despesas'
-        );
+          });
+          
+          categories = categories.concat(catResult.categories || []);
+        } catch (error) {
+          console.warn('Erro na categorização do lote, usando padrão:', error);
+          categories = categories.concat(batch.map(t => 
+            t.type === 'income' ? 'outras_receitas' : 'outras_despesas'
+          ));
+        }
       }
 
       setProgress(90);
       setMessage("Salvando transações...");
       
-      // 4. Cria transações
+      // Cria transações
       const transactionsToCreate = transactions.map((t, i) => {
         const category = categories[i] || (t.type === 'income' ? 'outras_receitas' : 'outras_despesas');
         
@@ -249,10 +301,10 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
       if (error.message) {
         if (error.message.includes("encontrada") || error.message.includes("Nenhuma")) {
           userMessage = "Nenhuma transação encontrada";
-          details = "O arquivo não parece conter transações bancárias válidas. Use CSV ou PDF com texto legível.";
+          details = "O arquivo não parece conter transações bancárias válidas. Verifique se é um extrato com movimentações.";
         } else if (error.message.includes("timeout")) {
           userMessage = "Tempo excedido";
-          details = "O arquivo é muito grande. Tente dividir em períodos menores (1-2 meses por arquivo).";
+          details = "Arquivo muito grande. Tente dividir em períodos menores (1-2 meses).";
         } else {
           userMessage = "Erro ao processar";
           details = error.message;
@@ -269,14 +321,14 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
       <div>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Importar Extrato Bancário</h1>
         <p className="text-slate-600">
-          Upload de extrato CSV ou PDF - processamento 100% automático com IA
+          Upload de extrato CSV ou PDF - processamento automático com IA
         </p>
       </div>
 
       <Alert className="border-blue-200 bg-blue-50">
         <AlertCircle className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-900">
-          <strong>Melhor resultado:</strong> Exporte CSV do site do banco. PDFs funcionam se tiverem texto selecionável (não foto/scan).
+          <strong>Melhor resultado:</strong> Use CSV exportado do banco. PDFs funcionam se tiverem texto selecionável (não scan/foto).
         </AlertDescription>
       </Alert>
 
@@ -306,7 +358,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
                   type="file"
                   id="file-upload"
                   className="hidden"
-                  accept=".csv,.pdf,.png,.jpg,.jpeg"
+                  accept=".csv,.pdf"
                   onChange={handleFileInput}
                 />
                 <label htmlFor="file-upload">
@@ -315,7 +367,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
                   </Button>
                 </label>
                 <p className="text-xs text-slate-500 mt-4">
-                  CSV, PDF, PNG ou JPG (máx. 10MB)
+                  Formatos: CSV ou PDF (máx. 10MB)
                 </p>
               </>
             ) : (
@@ -449,7 +501,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
             <div>
               <h4 className="font-semibold text-slate-900 mb-1">Upload do extrato</h4>
               <p className="text-sm text-slate-600">
-                Envie seu extrato em CSV ou PDF (preferência: CSV do site do banco)
+                CSV do banco (melhor opção) ou PDF com texto selecionável
               </p>
             </div>
           </div>
@@ -459,9 +511,9 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
               2
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900 mb-1">Extração automática</h4>
+              <h4 className="font-semibold text-slate-900 mb-1">IA analisa o arquivo</h4>
               <p className="text-sm text-slate-600">
-                IA analisa o arquivo e extrai todas as transações (data, valor, descrição, tipo)
+                Extração automática de data, descrição, valor e tipo de cada transação
               </p>
             </div>
           </div>
@@ -473,7 +525,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
             <div>
               <h4 className="font-semibold text-slate-900 mb-1">Categorização inteligente</h4>
               <p className="text-sm text-slate-600">
-                Cada transação é categorizada automaticamente (vendas, salários, aluguel, etc.)
+                Cada transação é categorizada automaticamente (vendas, despesas, etc.)
               </p>
             </div>
           </div>
@@ -485,7 +537,7 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
             <div>
               <h4 className="font-semibold text-slate-900 mb-1">Pronto!</h4>
               <p className="text-sm text-slate-600">
-                Visualize tudo no dashboard com análises, gráficos e relatórios automáticos
+                Visualize no dashboard com análises automáticas
               </p>
             </div>
           </div>
@@ -501,11 +553,11 @@ Exemplo: ["vendas", "fornecedores", "contas_servicos"]`;
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-orange-900 space-y-2">
-          <p>✓ <strong>CSV do banco:</strong> Melhor formato, 100% de precisão</p>
-          <p>✓ <strong>PDF:</strong> Deve ter texto selecionável (não foto/scan)</p>
-          <p>✓ <strong>Período:</strong> Recomendado 1-3 meses por arquivo</p>
-          <p>✓ <strong>Tamanho:</strong> Máximo 10MB por arquivo</p>
-          <p>✓ <strong>Nome da conta:</strong> Use nomes claros (ex: "Nubank PJ")</p>
+          <p>✓ <strong>CSV:</strong> Formato ideal, 100% de precisão</p>
+          <p>✓ <strong>PDF:</strong> Texto selecionável (não scan/foto)</p>
+          <p>✓ <strong>Período:</strong> 1-3 meses por arquivo</p>
+          <p>✓ <strong>Tamanho:</strong> Máximo 10MB</p>
+          <p>✓ <strong>Nome claro:</strong> Ex: "Nubank PJ", "C6 Bank"</p>
         </CardContent>
       </Card>
     </div>
