@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
 
-export default function MonthSummaryCards({ income, expense, balance }) {
+export default function MonthSummaryCards({ income, expense, balance, onClickIncome, onClickExpense }) {
   return (
     <div className="grid grid-cols-3 gap-3">
       <Card className="border-0 shadow-md bg-white">
@@ -19,7 +19,10 @@ export default function MonthSummaryCards({ income, expense, balance }) {
         </div>
       </Card>
 
-      <Card className="border-0 shadow-md bg-white">
+      <Card 
+        className="border-0 shadow-md bg-white cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={onClickIncome}
+      >
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
@@ -33,7 +36,10 @@ export default function MonthSummaryCards({ income, expense, balance }) {
         </div>
       </Card>
 
-      <Card className="border-0 shadow-md bg-white">
+      <Card 
+        className="border-0 shadow-md bg-white cursor-pointer hover:shadow-lg transition-shadow"
+        onClick={onClickExpense}
+      >
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">

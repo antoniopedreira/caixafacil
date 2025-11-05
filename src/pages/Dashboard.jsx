@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -12,11 +13,13 @@ import AccountBalance from "../components/dashboard/AccountBalance";
 import MonthSummaryCards from "../components/dashboard/MonthSummaryCards";
 import UpcomingExpenses from "../components/dashboard/UpcomingExpenses";
 import RecentTransactions from "../components/dashboard/RecentTransactions";
+import TransactionListModal from "../components/dashboard/TransactionListModal";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [showBalance, setShowBalance] = useState(true);
+  const [transactionModal, setTransactionModal] = useState({ open: false, type: null });
 
   const { data: transactions, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions'],
@@ -100,6 +103,23 @@ export default function Dashboard() {
     };
   }, [filteredTransactions]);
 
+  const handleOpenIncomeModal = () => {
+    setTransactionModal({ open: true, type: 'income' });
+  };
+
+  const handleOpenExpenseModal = () => {
+    setTransactionModal({ open: true, type: 'expense' });
+  };
+
+  const handleCloseModal = () => {
+    setTransactionModal({ open: false, type: null });
+  };
+
+  const modalTransactions = React.useMemo(() => {
+    if (!transactionModal.type) return [];
+    return filteredTransactions.filter(t => t.type === transactionModal.type);
+  }, [filteredTransactions, transactionModal.type]);
+
   if (isLoading) {
     return (
       <div className="p-6 md:p-8 space-y-6">
@@ -151,6 +171,8 @@ export default function Dashboard() {
         income={monthStats.income}
         expense={monthStats.expense}
         balance={monthStats.balance}
+        onClickIncome={handleOpenIncomeModal}
+        onClickExpense={handleOpenExpenseModal}
       />
 
       {/* Alert se não houver transações */}
@@ -168,6 +190,14 @@ export default function Dashboard() {
 
       {/* Últimas transações */}
       <RecentTransactions transactions={transactions} />
+
+      {/* Modal de transações */}
+      <TransactionListModal
+        open={transactionModal.open}
+        onClose={handleCloseModal}
+        transactions={modalTransactions}
+        type={transactionModal.type}
+      />
     </div>
   );
 }
