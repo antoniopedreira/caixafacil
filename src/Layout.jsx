@@ -25,6 +25,7 @@ import {
   SidebarFooter,
   SidebarProvider,
   SidebarTrigger,
+  SidebarInset,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -78,7 +79,6 @@ function SidebarContentComponent() {
   const { setOpenMobile } = useSidebar();
 
   const handleLinkClick = () => {
-    // Fecha o sidebar em mobile quando um link é clicado
     setOpenMobile(false);
   };
 
@@ -147,7 +147,7 @@ function SidebarContentComponent() {
 
 export default function Layout({ children, currentPageName }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
         <style>{`
           :root {
@@ -164,9 +164,9 @@ export default function Layout({ children, currentPageName }) {
           <SidebarContentComponent />
         </Sidebar>
 
-        <main className="flex-1 flex flex-col">
+        <SidebarInset className="flex-1 flex flex-col overflow-hidden">
           {/* Header mobile */}
-          <header className="bg-white border-b border-slate-200 px-6 py-4 md:hidden sticky top-0 z-10">
+          <header className="bg-white border-b border-slate-200 px-6 py-4 md:hidden sticky top-0 z-10 flex-shrink-0">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200" />
               <div className="flex items-center gap-2">
@@ -179,10 +179,10 @@ export default function Layout({ children, currentPageName }) {
           </header>
 
           {/* Main content */}
-          <div className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto">
             {children}
-          </div>
-        </main>
+          </main>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );
