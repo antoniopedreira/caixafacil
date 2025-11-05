@@ -21,7 +21,14 @@ const formatDescription = (description, maxWords = 4) => {
     }).join(' ');
   };
   
-  let cleaned = description.trim();
+  // Remove frases como "recebido de", "enviado para", etc
+  let cleaned = description
+    .replace(/recebido\s+de\s+/gi, '')
+    .replace(/enviado\s+para\s+/gi, '')
+    .replace(/recebido\s+/gi, '')
+    .replace(/enviado\s+/gi, '')
+    .trim();
+  
   const words = cleaned.split(' ').filter(w => w.length > 0);
   const abbreviated = words.slice(0, maxWords).join(' ');
   

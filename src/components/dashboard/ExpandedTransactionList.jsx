@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
@@ -43,8 +44,13 @@ const formatDescription = (description, maxWords = 4) => {
     }).join(' ');
   };
   
-  // Remove caracteres especiais excessivos e limpa
-  let cleaned = description.trim();
+  // Remove frases como "recebido de", "enviado para", etc
+  let cleaned = description
+    .replace(/recebido\s+de\s+/gi, '')
+    .replace(/enviado\s+para\s+/gi, '')
+    .replace(/recebido\s+/gi, '')
+    .replace(/enviado\s+/gi, '')
+    .trim();
   
   // Divide em palavras e pega apenas as primeiras
   const words = cleaned.split(' ').filter(w => w.length > 0);
