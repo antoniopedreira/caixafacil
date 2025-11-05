@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,35 @@ const formatCurrency = (value) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value);
+};
+
+// Função para gerar análise - definida ANTES de ser usada
+const generateAnalysis = (data) => {
+  if (data.length < 2) return null;
+  
+  const currentMonth = data[data.length - 1];
+  const previousMonth = data[data.length - 2];
+  
+  const incomeVariation = previousMonth.income > 0
+    ? ((currentMonth.income - previousMonth.income) / previousMonth.income * 100)
+    : 0;
+  
+  const expenseVariation = previousMonth.expense > 0
+    ? ((currentMonth.expense - previousMonth.expense) / previousMonth.expense * 100)
+    : 0;
+  
+  // Identifica maiores gastos do mês atual
+  const topExpenses = Object.entries(currentMonth.expenseByCategory)
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 3);
+  
+  return {
+    incomeVariation,
+    expenseVariation,
+    topExpenses,
+    currentMonth,
+    previousMonth
+  };
 };
 
 export default function MonthlyAnalysisTable({ transactions }) {
@@ -97,7 +127,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
       });
     }
     
-    // Análise automática
+    // Análise automática - agora usando a função definida acima
     const analysisText = generateAnalysis(data);
     
     return {
@@ -106,34 +136,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
       analysis: analysisText
     };
   }, [transactions, showMonths]);
-
-  const generateAnalysis = (data) => {
-    if (data.length < 2) return null;
-    
-    const currentMonth = data[data.length - 1];
-    const previousMonth = data[data.length - 2];
-    
-    const incomeVariation = previousMonth.income > 0
-      ? ((currentMonth.income - previousMonth.income) / previousMonth.income * 100)
-      : 0;
-    
-    const expenseVariation = previousMonth.expense > 0
-      ? ((currentMonth.expense - previousMonth.expense) / previousMonth.expense * 100)
-      : 0;
-    
-    // Identifica maiores gastos do mês atual
-    const topExpenses = Object.entries(currentMonth.expenseByCategory)
-      .sort((a, b) => b[1].total - a[1].total)
-      .slice(0, 3);
-    
-    return {
-      incomeVariation,
-      expenseVariation,
-      topExpenses,
-      currentMonth,
-      previousMonth
-    };
-  };
 
   const toggleMonth = (monthIndex) => {
     setExpandedMonth(expandedMonth === monthIndex ? null : monthIndex);
@@ -169,7 +171,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Info sobre última atualização */}
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center gap-2 text-sm text-blue-900">
               <Info className="w-4 h-4" />
@@ -179,11 +180,9 @@ export default function MonthlyAnalysisTable({ transactions }) {
             </div>
           </div>
 
-          {/* Tabela */}
           <div className="space-y-2">
             {monthsData.map((month, index) => (
               <div key={index}>
-                {/* Linha principal do mês */}
                 <div
                   className={`rounded-lg transition-all cursor-pointer ${
                     month.isCurrentMonth
@@ -196,7 +195,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                 >
                   <div className="p-4">
                     <div className="grid grid-cols-12 gap-4 items-center">
-                      {/* Mês */}
                       <div className="col-span-3 flex items-center gap-2">
                         {expandedMonth === index ? (
                           <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -217,7 +215,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         </div>
                       </div>
 
-                      {/* Entradas */}
                       <div className="col-span-3 text-right">
                         <p className="text-xs text-slate-600 mb-1">Entradas</p>
                         <p className="text-lg font-bold text-emerald-600">
@@ -225,7 +222,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         </p>
                       </div>
 
-                      {/* Saídas */}
                       <div className="col-span-3 text-right">
                         <p className="text-xs text-slate-600 mb-1">Saídas</p>
                         <p className="text-lg font-bold text-rose-600">
@@ -233,7 +229,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         </p>
                       </div>
 
-                      {/* Resultado */}
                       <div className="col-span-3 text-right">
                         <p className="text-xs text-slate-600 mb-1">Resultado</p>
                         <p className={`text-lg font-bold ${
@@ -246,10 +241,8 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   </div>
                 </div>
 
-                {/* Detalhamento expandido */}
                 {expandedMonth === index && (
                   <div className="ml-6 mt-2 space-y-2 mb-4">
-                    {/* Entradas por categoria */}
                     {Object.keys(month.incomeByCategory).length > 0 && (
                       <div className="bg-emerald-50 rounded-lg p-3">
                         <p className="text-sm font-semibold text-emerald-900 mb-2">
@@ -278,7 +271,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                                 </span>
                               </div>
 
-                              {/* Transações da categoria */}
                               {expandedCategory === `income-${category}` && (
                                 <div className="ml-6 mt-1 space-y-1">
                                   {data.transactions
@@ -309,7 +301,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                       </div>
                     )}
 
-                    {/* Saídas por categoria */}
                     {Object.keys(month.expenseByCategory).length > 0 && (
                       <div className="bg-rose-50 rounded-lg p-3">
                         <p className="text-sm font-semibold text-rose-900 mb-2">
@@ -338,7 +329,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                                 </span>
                               </div>
 
-                              {/* Transações da categoria */}
                               {expandedCategory === `expense-${category}` && (
                                 <div className="ml-6 mt-1 space-y-1">
                                   {data.transactions
@@ -376,7 +366,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
         </CardContent>
       </Card>
 
-      {/* Análise automática */}
       {analysis && (
         <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-blue-50">
           <CardHeader>
@@ -387,7 +376,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Variação de Entradas */}
               <div className="bg-white rounded-lg p-4 border border-emerald-200">
                 <p className="text-sm text-slate-600 mb-2">Variação das Entradas</p>
                 <div className="flex items-baseline gap-2">
@@ -407,7 +395,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
                 </p>
               </div>
 
-              {/* Variação de Saídas */}
               <div className="bg-white rounded-lg p-4 border border-rose-200">
                 <p className="text-sm text-slate-600 mb-2">Variação das Saídas</p>
                 <div className="flex items-baseline gap-2">
@@ -428,7 +415,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
               </div>
             </div>
 
-            {/* Principais Gastos */}
             {analysis.topExpenses.length > 0 && (
               <div className="bg-white rounded-lg p-4">
                 <p className="text-sm font-semibold text-slate-900 mb-3">
@@ -454,7 +440,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
               </div>
             )}
 
-            {/* Resumo em texto */}
             <div className="bg-white rounded-lg p-4 border-l-4 border-purple-500">
               <p className="text-sm text-slate-700 leading-relaxed">
                 {analysis.incomeVariation >= 0 ? (
@@ -483,7 +468,6 @@ export default function MonthlyAnalysisTable({ transactions }) {
         </Card>
       )}
 
-      {/* Modal de detalhes da transação */}
       <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
