@@ -33,8 +33,8 @@ const CATEGORY_NAMES = {
   outras_despesas: "Outras Despesas"
 };
 
-// Função para abreviar e formatar descrição (igual ao ExpandedTransactionList)
-const formatDescription = (description, maxWords = 4) => {
+// Função para abreviar e formatar descrição - mais agressiva
+const formatDescription = (description, maxChars = 20) => {
   if (!description) return '';
   
   const toTitleCase = (str) => {
@@ -52,24 +52,28 @@ const formatDescription = (description, maxWords = 4) => {
     .replace(/enviado\s+para\s+/gi, '')
     .replace(/recebido\s+/gi, '')
     .replace(/enviado\s+/gi, '')
+    .replace(/pagamento\s+/gi, 'Pag ')  // Substitui "Pagamento" por "Pag"
+    .replace(/transferencia\s+/gi, 'Transf ')
     .trim();
   
-  const words = cleaned.split(' ').filter(w => w.length > 0);
-  const abbreviated = words.slice(0, maxWords).join(' ');
+  // Aplica Title Case
+  cleaned = toTitleCase(cleaned);
   
-  return toTitleCase(abbreviated);
+  // Se ainda está muito grande, trunca
+  if (cleaned.length > maxChars) {
+    cleaned = cleaned.substring(0, maxChars) + '...';
+  }
+  
+  return cleaned;
 };
 
 // Funções de formatação baseadas no modo selecionado
 const formatCurrency = (value, displayMode) => {
   if (displayMode === 'k') {
-    // Mil: sempre em k com 1 decimal
     return (value / 1000).toFixed(1).replace('.', ',') + 'k';
   } else if (displayMode === 'M') {
-    // Milhão: sempre em M com 1 decimal
     return (value / 1000000).toFixed(1).replace('.', ',') + 'M';
   }
-  // Normal: valor inteiro sem decimais
   return Math.round(value).toLocaleString('pt-BR');
 };
 
@@ -110,8 +114,9 @@ const generateAnalysis = (data) => {
 
 export default function MonthlyAnalysisTable({ transactions }) {
   const [showMonths, setShowMonths] = useState(6);
-  const [displayMode, setDisplayMode] = useState('normal'); // 'normal', 'k', 'M'
+  const [displayMode, setDisplayMode] = useState('normal');
   const [expandedRow, setExpandedRow] = useState(null);
+  const [expandedCategory, setExpandedCategory] = useState(null); // Para expandir categorias
   const [selectedMonthTransactions, setSelectedMonthTransactions] = useState(null);
 
   const { monthsData, lastUpdateDate, analysis, allCategories } = useMemo(() => {
@@ -205,7 +210,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
       // Processa entradas
       Object.entries(month.incomeByCategory).forEach(([category, data]) => {
         data.transactions.forEach(transaction => {
-          const formattedDesc = formatDescription(transaction.description);
+          const formattedDesc = formatDescription(transaction.description, 20);
           const key = `income-${category}-${formattedDesc}`;
           
           if (!grouped[key]) {
@@ -234,7 +239,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
       // Processa saídas
       Object.entries(month.expenseByCategory).forEach(([category, data]) => {
         data.transactions.forEach(transaction => {
-          const formattedDesc = formatDescription(transaction.description);
+          const formattedDesc = formatDescription(transaction.description, 20);
           const key = `expense-${category}-${formattedDesc}`;
           
           if (!grouped[key]) {
@@ -267,9 +272,15 @@ export default function MonthlyAnalysisTable({ transactions }) {
   const toggleRow = (rowType) => {
     if (expandedRow === rowType) {
       setExpandedRow(null);
+      setExpandedCategory(null); // Fecha todas as categorias ao fechar a linha
     } else {
       setExpandedRow(rowType);
+      setExpandedCategory(null); // Não expande nenhuma categoria por padrão
     }
+  };
+
+  const toggleCategory = (category) => {
+    setExpandedCategory(expandedCategory === category ? null : category);
   };
 
   const handleClickValue = (transactions, monthData) => {
@@ -344,7 +355,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
             <table className="w-full border-separate border-spacing-0">
               <thead>
                 <tr className="border-b-2 border-slate-200">
-                  <th className="text-left p-1.5 font-semibold text-slate-900 sticky left-0 bg-white z-20 w-24">
+                  <th className="text-left p-1.5 font-semibold text-slate-900 sticky left-0 bg-white z-20 w-20">
                     
                   </th>
                   {monthsData.map((month, index) => (
@@ -392,7 +403,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   ))}
                 </tr>
 
-                {/* Detalhamento de Entradas - Agrupado por descrição */}
+                {/* Detalhamento de Entradas - Categorias retraídas por padrão */}
                 {expandedRow === 'income' && allCategories.income.map((category) => {
                   const categoryTransactions = Object.entries(groupedTransactionsByDescription)
                     .filter(([key, data]) => data.type === 'income' && data.category === category)
@@ -402,11 +413,21 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   
                   return (
                     <React.Fragment key={category}>
-                      <tr className="border-b border-slate-50 bg-emerald-50/50">
-                        <td className="p-1 pl-6 sticky left-0 bg-emerald-50/80 z-10 border-r border-slate-100">
-                          <span className="text-[10px] font-medium text-slate-900">
-                            {CATEGORY_NAMES[category] || category}
-                          </span>
+                      <tr 
+                        className="border-b border-slate-50 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer"
+                        onClick={() => toggleCategory(`income-${category}`)}
+                      >
+                        <td className="p-1 pl-4 sticky left-0 bg-emerald-50/80 z-10 border-r border-slate-100">
+                          <div className="flex items-center gap-1">
+                            {expandedCategory === `income-${category}` ? (
+                              <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
+                            ) : (
+                              <ChevronRight className="w-2.5 h-2.5 text-slate-400" />
+                            )}
+                            <span className="text-[10px] font-medium text-slate-900">
+                              {CATEGORY_NAMES[category] || category}
+                            </span>
+                          </div>
                         </td>
                         {monthsData.map((month, idx) => (
                           <td key={idx} className="p-1 text-center bg-emerald-50/50">
@@ -421,11 +442,11 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         ))}
                       </tr>
 
-                      {/* Linhas por descrição agrupada */}
-                      {categoryTransactions.map(([key, data]) => (
+                      {/* Linhas de transações - só aparecem se categoria estiver expandida */}
+                      {expandedCategory === `income-${category}` && categoryTransactions.map(([key, data]) => (
                         <tr key={key} className="border-b border-slate-50 hover:bg-emerald-100/30">
-                          <td className="p-1 pl-10 sticky left-0 bg-white z-10 border-r border-slate-100">
-                            <span className="text-[9px] text-slate-900">
+                          <td className="p-1 pl-7 sticky left-0 bg-white z-10 border-r border-slate-100">
+                            <span className="text-[9px] text-slate-900 block truncate max-w-[75px]" title={data.description}>
                               {data.description}
                             </span>
                           </td>
@@ -478,7 +499,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   ))}
                 </tr>
 
-                {/* Detalhamento de Saídas - Agrupado por descrição */}
+                {/* Detalhamento de Saídas - Categorias retraídas por padrão */}
                 {expandedRow === 'expense' && allCategories.expense.map((category) => {
                   const categoryTransactions = Object.entries(groupedTransactionsByDescription)
                     .filter(([key, data]) => data.type === 'expense' && data.category === category)
@@ -488,11 +509,21 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   
                   return (
                     <React.Fragment key={category}>
-                      <tr className="border-b border-slate-50 bg-rose-50/50">
-                        <td className="p-1 pl-6 sticky left-0 bg-rose-50/80 z-10 border-r border-slate-100">
-                          <span className="text-[10px] font-medium text-slate-900">
-                            {CATEGORY_NAMES[category] || category}
-                          </span>
+                      <tr 
+                        className="border-b border-slate-50 bg-rose-50/50 hover:bg-rose-50 cursor-pointer"
+                        onClick={() => toggleCategory(`expense-${category}`)}
+                      >
+                        <td className="p-1 pl-4 sticky left-0 bg-rose-50/80 z-10 border-r border-slate-100">
+                          <div className="flex items-center gap-1">
+                            {expandedCategory === `expense-${category}` ? (
+                              <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
+                            ) : (
+                              <ChevronRight className="w-2.5 h-2.5 text-slate-400" />
+                            )}
+                            <span className="text-[10px] font-medium text-slate-900">
+                              {CATEGORY_NAMES[category] || category}
+                            </span>
+                          </div>
                         </td>
                         {monthsData.map((month, idx) => (
                           <td key={idx} className="p-1 text-center bg-rose-50/50">
@@ -507,10 +538,11 @@ export default function MonthlyAnalysisTable({ transactions }) {
                         ))}
                       </tr>
 
-                      {categoryTransactions.map(([key, data]) => (
+                      {/* Linhas de transações - só aparecem se categoria estiver expandida */}
+                      {expandedCategory === `expense-${category}` && categoryTransactions.map(([key, data]) => (
                         <tr key={key} className="border-b border-slate-50 hover:bg-rose-100/30">
-                          <td className="p-1 pl-10 sticky left-0 bg-white z-10 border-r border-slate-100">
-                            <span className="text-[9px] text-slate-900">
+                          <td className="p-1 pl-7 sticky left-0 bg-white z-10 border-r border-slate-100">
+                            <span className="text-[9px] text-slate-900 block truncate max-w-[75px]" title={data.description}>
                               {data.description}
                             </span>
                           </td>
