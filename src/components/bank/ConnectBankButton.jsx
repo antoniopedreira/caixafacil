@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Loader2, Link as LinkIcon, RefreshCw } from "lucide-react";
+import { Loader2, Link as LinkIcon, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { base44 } from "@/api/base44Client";
 
@@ -10,6 +10,7 @@ export default function ConnectBankButton({ onSuccess }) {
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [loadingScript, setLoadingScript] = useState(true);
   const [debugInfo, setDebugInfo] = useState([]);
+  const [cdnBlocked, setCdnBlocked] = useState(false);
 
   const addDebugInfo = (message) => {
     console.log(message);
@@ -20,10 +21,26 @@ export default function ConnectBankButton({ onSuccess }) {
     loadPluggyScript();
   }, []);
 
-  const loadPluggyScript = () => {
+  const testCdnAccess = async () => {
+    try {
+      addDebugInfo('🧪 Testando acesso ao CDN do Pluggy...');
+      const response = await fetch('https://cdn.pluggy.ai/pluggy-connect/v3/pluggy-connect.js', { 
+        method: 'HEAD',
+        mode: 'no-cors' // Permite testar sem CORS
+      });
+      addDebugInfo('✅ CDN acessível (ou modo no-cors passou)');
+      return true;
+    } catch (error) {
+      addDebugInfo(`❌ CDN não acessível: ${error.message}`);
+      return false;
+    }
+  };
+
+  const loadPluggyScript = async () => {
     setLoadingScript(true);
     setScriptLoaded(false);
     setError(null);
+    setCdnBlocked(false);
     setDebugInfo([]);
     
     addDebugInfo('🔄 Iniciando carregamento do Pluggy Connect...');
@@ -36,14 +53,16 @@ export default function ConnectBankButton({ onSuccess }) {
       return;
     }
 
-    // Remove script existente com qualquer URL relacionada ao Pluggy
+    // Testa acesso ao CDN primeiro
+    const cdnAccessible = await testCdnAccess();
+    
+    // Remove scripts existentes
     const existingScripts = document.querySelectorAll('script[src*="pluggy"]');
     if (existingScripts.length > 0) {
       addDebugInfo(`🗑️ Removendo ${existingScripts.length} script(s) antigo(s) do Pluggy...`);
       existingScripts.forEach(s => s.remove());
     }
 
-    // URL correta do Pluggy Connect v3
     const PLUGGY_CDN_URL = 'https://cdn.pluggy.ai/pluggy-connect/v3/pluggy-connect.js';
     addDebugInfo(`📥 URL do script: ${PLUGGY_CDN_URL}`);
 
@@ -55,6 +74,7 @@ export default function ConnectBankButton({ onSuccess }) {
     
     let attempts = 0;
     let checkInterval;
+    let scriptErrorOccurred = false;
     
     script.onload = () => {
       addDebugInfo('📦 Script carregado do CDN com sucesso');
@@ -71,39 +91,59 @@ export default function ConnectBankButton({ onSuccess }) {
         } else if (attempts > 30) {
           addDebugInfo('❌ Timeout: PluggyConnect não foi encontrado após 30 tentativas');
           clearInterval(checkInterval);
-          setError('O componente Pluggy não inicializou. Isso pode acontecer se: (1) Há um bloqueador de anúncios ativo, (2) Seu firewall está bloqueando cdn.pluggy.ai, (3) Problemas temporários no CDN do Pluggy');
+          setError('O componente Pluggy carregou mas não inicializou. Tente recarregar a página (F5).');
           setLoadingScript(false);
         }
       }, 200);
     };
     
     script.onerror = (e) => {
-      addDebugInfo(`❌ ERRO ao carregar do CDN: ${e.toString()}`);
+      scriptErrorOccurred = true;
+      addDebugInfo(`❌ ERRO ao carregar script do CDN`);
+      addDebugInfo(`Tipo de erro: ${e.type || 'desconhecido'}`);
       addDebugInfo(`URL tentada: ${PLUGGY_CDN_URL}`);
-      setError(`Não foi possível carregar o Pluggy Connect. Possíveis causas:
       
-• Bloqueador de anúncios ativo (desative para esta página)
-• Firewall corporativo bloqueando cdn.pluggy.ai
-• Problemas temporários no CDN do Pluggy
+      setCdnBlocked(true);
+      
+      setError(`Não foi possível carregar o Pluggy Connect do CDN.
 
-Tente: (1) Desativar bloqueadores, (2) Usar outra rede, (3) Tentar novamente em alguns minutos`);
+🚨 CAUSA MAIS PROVÁVEL: Bloqueador de anúncios
+
+📋 SOLUÇÕES (tente nesta ordem):
+
+1️⃣ **Desative bloqueadores de anúncios** para esta página:
+   • uBlock Origin
+   • AdBlock
+   • Brave Shields
+   • Extensões antivírus
+
+2️⃣ **Adicione exceção para cdn.pluggy.ai** no seu bloqueador
+
+3️⃣ **Use o modo anônimo** do navegador (Ctrl+Shift+N)
+
+4️⃣ **Teste em outro navegador** (Chrome, Firefox, Edge)
+
+5️⃣ **Verifique firewall corporativo** se estiver no trabalho
+
+Após fazer uma das ações acima, clique em "Tentar Carregar Novamente"`);
       setLoadingScript(false);
     };
 
     addDebugInfo('📥 Adicionando script ao documento...');
     document.head.appendChild(script);
 
-    // Timeout geral de 15 segundos
+    // Timeout geral de 10 segundos
     setTimeout(() => {
-      if (checkInterval && !scriptLoaded) {
+      if (checkInterval && !scriptLoaded && !scriptErrorOccurred) {
         clearInterval(checkInterval);
         if (!error) {
-          addDebugInfo('⏱️ Timeout geral atingido (15s)');
-          setError('Tempo limite excedido ao carregar o componente. Recarregue a página (F5) e tente novamente.');
+          addDebugInfo('⏱️ Timeout geral atingido (10s)');
+          setError('Tempo limite excedido. O script pode estar sendo bloqueado. Veja as soluções acima.');
           setLoadingScript(false);
+          setCdnBlocked(true);
         }
       }
-    }, 15000);
+    }, 10000);
   };
 
   const connectBank = async () => {
@@ -186,7 +226,7 @@ Tente: (1) Desativar bloqueadores, (2) Usar outra rede, (3) Tentar novamente em 
 
   return (
     <div className="space-y-4">
-      {loadingScript && (
+      {loadingScript && !cdnBlocked && (
         <Alert className="border-blue-200 bg-blue-50">
           <AlertDescription className="text-blue-900 flex items-center gap-2 text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -214,7 +254,29 @@ Tente: (1) Desativar bloqueadores, (2) Usar outra rede, (3) Tentar novamente em 
         )}
       </Button>
 
-      {error && (
+      {cdnBlocked && (
+        <Alert variant="destructive" className="border-2">
+          <AlertTriangle className="h-5 w-5" />
+          <AlertDescription className="text-sm">
+            <div className="space-y-3">
+              <p className="font-bold text-base">🚨 Bloqueador de Anúncios Detectado</p>
+              <p>O CDN do Pluggy (cdn.pluggy.ai) está sendo bloqueado.</p>
+              
+              <div className="bg-rose-100 rounded-lg p-3 space-y-2">
+                <p className="font-semibold">✅ Soluções Rápidas:</p>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  <li>Desative bloqueadores de anúncios nesta página</li>
+                  <li>Adicione exceção para <code className="bg-rose-200 px-1 rounded">cdn.pluggy.ai</code></li>
+                  <li>Teste no modo anônimo (Ctrl+Shift+N)</li>
+                  <li>Use outro navegador</li>
+                </ol>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {error && !cdnBlocked && (
         <div className="space-y-2">
           <Alert variant="destructive">
             <AlertDescription className="text-sm whitespace-pre-line">
@@ -232,29 +294,41 @@ Tente: (1) Desativar bloqueadores, (2) Usar outra rede, (3) Tentar novamente em 
               Tentar Carregar Novamente
             </Button>
           )}
-          
-          {/* Debug info */}
-          {debugInfo.length > 0 && (
-            <details className="text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
-              <summary className="cursor-pointer font-semibold text-slate-700 mb-2">
-                📋 Logs de Diagnóstico (clique para expandir)
-              </summary>
-              <div className="space-y-1 text-slate-600 max-h-60 overflow-y-auto font-mono">
-                {debugInfo.map((info, i) => (
-                  <div key={i} className="border-b border-slate-200 pb-1">
-                    {info}
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
         </div>
       )}
 
-      {!scriptLoaded && !loadingScript && !error && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <AlertDescription className="text-orange-900 text-sm">
-            ⚠️ Componente não carregou completamente. Recarregue a página (F5) ou clique em "Tentar Carregar Novamente".
+      {(cdnBlocked || (!scriptLoaded && !loadingScript)) && (
+        <Button 
+          variant="outline" 
+          onClick={loadPluggyScript}
+          className="w-full border-2 border-orange-300 hover:bg-orange-50"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Tentar Carregar Novamente
+        </Button>
+      )}
+      
+      {/* Debug info */}
+      {debugInfo.length > 0 && (
+        <details className="text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
+          <summary className="cursor-pointer font-semibold text-slate-700 mb-2">
+            📋 Logs de Diagnóstico (clique para expandir)
+          </summary>
+          <div className="space-y-1 text-slate-600 max-h-60 overflow-y-auto font-mono">
+            {debugInfo.map((info, i) => (
+              <div key={i} className="border-b border-slate-200 pb-1">
+                {info}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {scriptLoaded && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-900 text-sm">
+            ✅ Componente carregado com sucesso! Clique em "Conectar Banco" para começar.
           </AlertDescription>
         </Alert>
       )}
