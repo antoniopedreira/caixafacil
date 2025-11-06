@@ -422,18 +422,18 @@ export default function Transactions() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead>Data</TableHead>
+                <TableHead className="w-28">Data</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-40">Categoria</TableHead>
+                <TableHead className="w-32">Tipo</TableHead>
+                <TableHead className="text-right w-36">Valor</TableHead>
+                <TableHead className="text-right w-20">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTransactions.map((transaction) => (
                 <TableRow key={transaction.id} className="hover:bg-slate-50">
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {format(new Date(transaction.date), "dd/MM/yyyy")}
                   </TableCell>
                   <TableCell className="font-medium">{transaction.description}</TableCell>
@@ -455,10 +455,10 @@ export default function Transactions() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className={`text-right font-semibold ${
+                  <TableCell className={`text-right font-semibold whitespace-nowrap ${
                     transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
-                    R$ {formatCurrency(Math.abs(transaction.amount))}
+                    <span className="inline-block">R$ {formatCurrency(Math.abs(transaction.amount))}</span>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
