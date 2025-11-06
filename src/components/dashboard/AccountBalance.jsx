@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +70,12 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
     return selectedAccount;
   };
 
+  const handleInfoClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setInfoDialogOpen(true);
+  };
+
   return (
     <>
       <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-xl text-white">
@@ -117,18 +122,24 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
                       {Math.abs(previousMonthComparison.variation).toFixed(1)}%
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <span className="text-emerald-100 text-xs">
                       vs mês anterior R$ {formatCurrency(previousMonthComparison.previousBalance)}
                     </span>
-                    <Button 
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setInfoDialogOpen(true)}
-                      className="hover:bg-emerald-400/30 rounded-full h-7 w-7 p-0 min-w-0 ml-1"
+                    <div
+                      onClick={handleInfoClick}
+                      onTouchStart={handleInfoClick}
+                      className="flex items-center justify-center w-9 h-9 hover:bg-emerald-400/30 active:bg-emerald-400/40 rounded-full transition-colors cursor-pointer"
+                      style={{
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        userSelect: 'none',
+                        position: 'relative',
+                        zIndex: 10
+                      }}
                     >
-                      <HelpCircle className="w-5 h-5 text-emerald-100" />
-                    </Button>
+                      <HelpCircle className="w-6 h-6 text-emerald-100" />
+                    </div>
                   </div>
                 </div>
               </>
