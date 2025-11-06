@@ -1,9 +1,18 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, AlertCircle } from "lucide-react";
 import { format, setDate, differenceInDays, isPast, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+// Função para formatar valor com ponto para milhares e vírgula para decimal
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+};
 
 export default function UpcomingExpenses({ recurringExpenses }) {
   const upcomingExpenses = useMemo(() => {
@@ -75,7 +84,7 @@ export default function UpcomingExpenses({ recurringExpenses }) {
             </div>
             <div className="text-right">
               <p className="font-bold text-slate-900">
-                R$ {expense.amount.toFixed(2)}
+                R$ {formatCurrency(expense.amount)}
               </p>
               <Badge variant="outline" className="text-xs">
                 {format(expense.dueDate, 'dd/MM')}
