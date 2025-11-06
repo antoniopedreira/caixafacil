@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -55,22 +56,67 @@ export default function RecurringExpenses() {
   const suggestedExpenses = useMemo(() => {
     const descriptionData = {};
     
+    // Função para limpar e extrair apenas o nome do fornecedor/despesa
+    const cleanDescription = (description) => {
+      if (!description) return '';
+      
+      let cleaned = description.toLowerCase().trim();
+      
+      // Remove prefixos comuns
+      cleaned = cleaned
+        .replace(/^pagamento\s+(de|para|a)\s+/gi, '')
+        .replace(/^pix\s+(de|para|a)\s+/gi, '')
+        .replace(/^transferencia\s+(de|para|a)\s+/gi, '')
+        .replace(/^compra\s+(de|em)\s+/gi, '')
+        .replace(/^debito\s+(de|em)\s+/gi, '')
+        .replace(/^credito\s+(de|em)\s+/gi, '')
+        .replace(/^fatura\s+(de)?\s*/gi, '')
+        .replace(/^recebimento\s+(de)\s+/gi, '')
+        .replace(/^enviado\s+para\s+/gi, '')
+        .replace(/^recebido\s+de\s+/gi, '')
+        .trim();
+      
+      // Remove datas no formato dd/mm ou dd/mm/yyyy
+      cleaned = cleaned.replace(/\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*/g, ' ').trim();
+      
+      // Remove números de referência/protocolo
+      cleaned = cleaned.replace(/ref[:\s]+\d+/gi, '').trim();
+      cleaned = cleaned.replace(/protocolo[:\s]+\d+/gi, '').trim();
+      
+      // Remove múltiplos espaços
+      cleaned = cleaned.replace(/\s+/g, ' ').trim();
+      
+      // Capitaliza primeira letra de cada palavra, exceto preposições
+      const words = cleaned.split(' ');
+      const capitalized = words.map(word => {
+        if (!word) return ''; // handle empty string from split
+        if (['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'em', 'para', 'com', 'por', 'via'].includes(word.toLowerCase())) {
+          return word.toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }).join(' ');
+      
+      return capitalized;
+    };
+    
     // Agrupa transações por descrição similar
     transactions
       .filter(t => t.type === 'expense')
       .forEach(t => {
-        const desc = t.description.toLowerCase().trim();
+        const cleanedDesc = cleanDescription(t.description);
+        if (!cleanedDesc) return; // Skip if description is empty after cleaning
+        
         const date = new Date(t.date);
         const day = date.getDate();
         
-        if (!descriptionData[desc]) {
-          descriptionData[desc] = {
+        if (!descriptionData[cleanedDesc]) {
+          descriptionData[cleanedDesc] = {
             count: 0,
             days: []
           };
         }
-        descriptionData[desc].count += 1;
-        descriptionData[desc].days.push(day);
+        descriptionData[cleanedDesc].count += 1;
+        descriptionData[cleanedDesc].days.push(day);
       });
 
     // Filtra descrições que aparecem pelo menos 2 vezes
@@ -88,11 +134,8 @@ export default function RecurringExpenses() {
         const mostFrequentDay = Object.entries(dayFrequency)
           .sort((a, b) => b[1] - a[1])[0][0];
         
-        // Capitaliza primeira letra
-        const formattedName = desc.charAt(0).toUpperCase() + desc.slice(1);
-        
         return {
-          name: formattedName,
+          name: desc,
           suggestedDay: parseInt(mostFrequentDay)
         };
       });
