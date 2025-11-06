@@ -62,34 +62,56 @@ export default function RecurringExpenses() {
       
       let cleaned = description.toLowerCase().trim();
       
-      // Remove prefixos comuns
+      // Remove prefixos comuns mais agressivamente
       cleaned = cleaned
-        .replace(/^pagamento\s+(de|para|a)\s+/gi, '')
-        .replace(/^pix\s+(de|para|a)\s+/gi, '')
-        .replace(/^transferencia\s+(de|para|a)\s+/gi, '')
-        .replace(/^compra\s+(de|em)\s+/gi, '')
-        .replace(/^debito\s+(de|em)\s+/gi, '')
-        .replace(/^credito\s+(de|em)\s+/gi, '')
-        .replace(/^fatura\s+(de)?\s*/gi, '')
-        .replace(/^recebimento\s+(de)\s+/gi, '')
-        .replace(/^enviado\s+para\s+/gi, '')
-        .replace(/^recebido\s+de\s+/gi, '')
+        .replace(/^pagamento\s+(de|para|a|pix|via|por)?\s*/gi, '')
+        .replace(/^pix\s+(de|para|a|enviado|recebido)?\s*/gi, '')
+        .replace(/^transferencia\s+(de|para|a|bancaria|enviado|recebido)?\s*/gi, '')
+        .replace(/^compra\s+(de|em|na|no)?\s*/gi, '')
+        .replace(/^debito\s+(de|em|automatico|na|no)?\s*/gi, '')
+        .replace(/^credito\s+(de|em|na|no)?\s*/gi, '')
+        .replace(/^fatura\s+(de|do|da)?\s*/gi, '')
+        .replace(/^recebimento\s+(de|do|da)?\s*/gi, '')
+        .replace(/^enviado\s+(para|a)?\s*/gi, '')
+        .replace(/^recebido\s+(de|do|da)?\s*/gi, '')
+        .replace(/^pagto\s+(de|para|a)?\s*/gi, '')
+        .replace(/^pag\s+(de|para|a)?\s*/gi, '')
+        .replace(/^taxa\s+(de|do|da)?\s*/gi, '')
+        .replace(/^ted\s+/gi, '')
+        .replace(/^doc\s+/gi, '')
         .trim();
       
-      // Remove datas no formato dd/mm ou dd/mm/yyyy
-      cleaned = cleaned.replace(/\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*/g, ' ').trim();
+      // Remove datas e horários
+      cleaned = cleaned.replace(/\s*\d{1,2}[\/\-\.]\d{1,2}([\/\-\.]\d{2,4})?\s*/g, ' ').trim();
+      cleaned = cleaned.replace(/\s*\d{2}:\d{2}(:\d{2})?\s*/g, ' ').trim();
       
-      // Remove números de referência/protocolo
-      cleaned = cleaned.replace(/ref[:\s]+\d+/gi, '').trim();
-      cleaned = cleaned.replace(/protocolo[:\s]+\d+/gi, '').trim();
+      // Remove números de referência, protocolo, CPF/CNPJ
+      cleaned = cleaned.replace(/ref[:\s]+[\w\d]+/gi, '').trim();
+      cleaned = cleaned.replace(/protocolo[:\s]+[\w\d]+/gi, '').trim();
+      cleaned = cleaned.replace(/\d{3}\.\d{3}\.\d{3}-\d{2}/g, '').trim();
+      cleaned = cleaned.replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, '').trim();
+      cleaned = cleaned.replace(/cpf[:\s]+[\d\.\-\/]+/gi, '').trim();
+      cleaned = cleaned.replace(/cnpj[:\s]+[\d\.\-\/]+/gi, '').trim();
+      
+      // Remove números de conta, agência
+      cleaned = cleaned.replace(/ag[:\s]+\d+/gi, '').trim();
+      cleaned = cleaned.replace(/cc[:\s]+\d+/gi, '').trim();
+      cleaned = cleaned.replace(/conta[:\s]+\d+/gi, '').trim();
+      
+      // Remove preposições e artigos isolados no início
+      cleaned = cleaned.replace(/^(de|da|do|das|dos|a|o|as|os|em|na|no|nas|nos|para|por|via)\s+/gi, '').trim();
       
       // Remove múltiplos espaços
       cleaned = cleaned.replace(/\s+/g, ' ').trim();
       
+      // Pega apenas as primeiras 2 palavras significativas
+      const words = cleaned.split(' ').filter(w => w.length > 2); // ignora palavras muito curtas
+      const mainWords = words.slice(0, 2).join(' ');
+      
       // Capitaliza primeira letra de cada palavra, exceto preposições
-      const words = cleaned.split(' ');
-      const capitalized = words.map(word => {
-        if (!word) return ''; // handle empty string from split
+      const finalWords = mainWords.split(' ');
+      const capitalized = finalWords.map(word => {
+        if (!word) return '';
         if (['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'em', 'para', 'com', 'por', 'via'].includes(word.toLowerCase())) {
           return word.toLowerCase();
         }
