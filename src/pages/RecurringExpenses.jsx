@@ -37,6 +37,7 @@ export default function RecurringExpenses() {
     due_day: "5",
     reminder_days_before: "3"
   });
+  const [editingName, setEditingName] = useState({});
 
   const { data: recurringExpenses, isLoading } = useQuery({
     queryKey: ['recurring-expenses'],
@@ -50,31 +51,55 @@ export default function RecurringExpenses() {
     initialData: [],
   });
 
-  // Sugere despesas recorrentes baseadas em transações
+  // Sugere despesas recorrentes baseadas em transações COM O DIA MAIS FREQUENTE
   const suggestedExpenses = useMemo(() => {
-    const descriptionCount = {};
+    const descriptionData = {};
     
-    // Conta transações com descrições similares
+    // Agrupa transações por descrição similar
     transactions
       .filter(t => t.type === 'expense')
       .forEach(t => {
         const desc = t.description.toLowerCase().trim();
-        descriptionCount[desc] = (descriptionCount[desc] || 0) + 1;
+        const date = new Date(t.date);
+        const day = date.getDate();
+        
+        if (!descriptionData[desc]) {
+          descriptionData[desc] = {
+            count: 0,
+            days: []
+          };
+        }
+        descriptionData[desc].count += 1;
+        descriptionData[desc].days.push(day);
       });
 
     // Filtra descrições que aparecem pelo menos 2 vezes
-    const recurring = Object.entries(descriptionCount)
-      .filter(([desc, count]) => count >= 2)
-      .sort((a, b) => b[1] - a[1])
+    const recurring = Object.entries(descriptionData)
+      .filter(([desc, data]) => data.count >= 2)
+      .sort((a, b) => b[1].count - a[1].count)
       .slice(0, 5)
-      .map(([desc]) => {
+      .map(([desc, data]) => {
+        // Calcula o dia mais frequente
+        const dayFrequency = {};
+        data.days.forEach(day => {
+          dayFrequency[day] = (dayFrequency[day] || 0) + 1;
+        });
+        
+        const mostFrequentDay = Object.entries(dayFrequency)
+          .sort((a, b) => b[1] - a[1])[0][0];
+        
         // Capitaliza primeira letra
-        return desc.charAt(0).toUpperCase() + desc.slice(1);
+        const formattedName = desc.charAt(0).toUpperCase() + desc.slice(1);
+        
+        return {
+          name: formattedName,
+          suggestedDay: parseInt(mostFrequentDay)
+        };
       });
 
     // Remove sugestões que já existem
     const existingNames = recurringExpenses.map(e => e.name.toLowerCase());
-    return recurring.filter(name => !existingNames.includes(name.toLowerCase()));
+    return recurring.filter(item => !existingNames.includes(item.name.toLowerCase()));
   }, [transactions, recurringExpenses]);
 
   const createMutation = useMutation({
@@ -95,6 +120,7 @@ export default function RecurringExpenses() {
     mutationFn: ({ id, data }) => base44.entities.RecurringExpense.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-expenses'] });
+      setEditingName({});
     },
   });
 
@@ -117,10 +143,30 @@ export default function RecurringExpenses() {
 
   const handleAddSuggestion = (suggestion) => {
     createMutation.mutate({
-      name: suggestion,
-      due_day: 5,
+      name: suggestion.name,
+      due_day: suggestion.suggestedDay,
       reminder_days_before: 3
     });
+  };
+
+  const handleNameChange = (id, newName) => {
+    setEditingName({ ...editingName, [id]: newName });
+  };
+
+  const handleNameBlur = (id) => {
+    const expense = recurringExpenses.find(e => e.id === id);
+    if (!expense) return;
+
+    const newName = editingName[id];
+    if (newName !== undefined && newName.trim() !== expense.name) {
+      const updateData = { ...expense, name: newName.trim() };
+      updateMutation.mutate({ id, data: updateData });
+    } else {
+      // Remove do estado de edição se não mudou
+      const newEditingState = { ...editingName };
+      delete newEditingState[id];
+      setEditingName(newEditingState);
+    }
   };
 
   const handleUpdateExpense = (id, field, value) => {
@@ -129,15 +175,17 @@ export default function RecurringExpenses() {
 
     const updateData = { ...expense };
     
-    if (field === 'name') {
-      updateData.name = value;
-    } else if (field === 'due_day') {
+    if (field === 'due_day') {
       updateData.due_day = parseInt(value);
     } else if (field === 'reminder_days_before') {
       updateData.reminder_days_before = parseInt(value);
     }
 
     updateMutation.mutate({ id, data: updateData });
+  };
+
+  const getDisplayName = (expense) => {
+    return editingName[expense.id] !== undefined ? editingName[expense.id] : expense.name;
   };
 
   return (
@@ -169,12 +217,12 @@ export default function RecurringExpenses() {
                     onClick={() => handleAddSuggestion(suggestion)}
                   >
                     <Plus className="w-3 h-3 mr-1" />
-                    {suggestion}
+                    {suggestion.name} (dia {suggestion.suggestedDay})
                   </Badge>
                 ))}
               </div>
               <p className="text-xs text-purple-700 mt-1">
-                Clique para adicionar à lista
+                Clique para adicionar à lista (já com o dia de vencimento detectado)
               </p>
             </div>
           </AlertDescription>
@@ -207,9 +255,14 @@ export default function RecurringExpenses() {
               <div key={expense.id} className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-slate-50 rounded-lg transition-colors">
                 <div className="col-span-6">
                   <Input
-                    value={expense.name}
-                    onChange={(e) => handleUpdateExpense(expense.id, 'name', e.target.value)}
-                    onBlur={(e) => handleUpdateExpense(expense.id, 'name', e.target.value)}
+                    value={getDisplayName(expense)}
+                    onChange={(e) => handleNameChange(expense.id, e.target.value)}
+                    onBlur={() => handleNameBlur(expense.id)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleNameBlur(expense.id);
+                      }
+                    }}
                     className="border-slate-200 hover:border-blue-400 focus:border-blue-500 transition-colors"
                   />
                 </div>
@@ -345,6 +398,7 @@ export default function RecurringExpenses() {
                 <li>Configure o dia de vencimento e quando quer ser lembrado</li>
                 <li>Receba notificações automáticas por email nos dias configurados</li>
                 <li>Edite qualquer informação clicando diretamente nos campos</li>
+                <li>As sugestões já vêm com o dia mais comum de pagamento detectado automaticamente!</li>
               </ul>
             </div>
           </div>
