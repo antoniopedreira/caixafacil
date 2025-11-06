@@ -1,13 +1,22 @@
-import React, { useState, useCallback } from "react";
+
+import React, { useState, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Upload, FileText, CheckCircle, AlertCircle, Loader2, Trash2, Calendar, FileSpreadsheet } from "lucide-react";
 
 // Função para parsear CSV manualmente
 const parseCSV = (text) => {
@@ -151,6 +160,81 @@ export default function UploadStatement() {
   const [message, setMessage] = useState("");
   const [extractedCount, setExtractedCount] = useState(0);
   const [errorDetails, setErrorDetails] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [importToDelete, setImportToDelete] = useState(null);
+
+  const { data: transactions, isLoading: loadingTransactions } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: () => base44.entities.Transaction.list('-created_date'),
+    initialData: [],
+  });
+
+  // Agrupa importações por data e nota
+  const importHistory = useMemo(() => {
+    const importedTransactions = transactions.filter(t => 
+      t.notes && (
+        t.notes.includes('Importado do extrato CSV em') ||
+        t.notes.includes('Importado em') ||
+        t.notes.includes('Importado via Pluggy') // Adicionado para cobrir outras fontes de importação
+      )
+    );
+    
+    if (importedTransactions.length === 0) return [];
+    
+    const groups = {};
+    importedTransactions.forEach(t => {
+      const noteKey = t.notes; // Use the full note as key to group by exact import
+      if (!groups[noteKey]) {
+        groups[noteKey] = {
+          note: noteKey,
+          transactions: [],
+          created_date: t.created_date,
+          bank_account: t.bank_account || 'Sem conta'
+        };
+      }
+      groups[noteKey].transactions.push(t);
+    });
+    
+    return Object.values(groups).sort((a, b) => {
+      // Sort by the created_date of the first transaction in the group
+      return new Date(b.created_date) - new Date(a.created_date);
+    });
+  }, [transactions]);
+
+  const deleteImportMutation = useMutation({
+    mutationFn: async (transactionIds) => {
+      // Delete in parallel to be faster
+      await Promise.all(transactionIds.map(id => base44.entities.Transaction.delete(id)));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      setDeleteDialogOpen(false);
+      setImportToDelete(null);
+      alert('✅ Importação excluída com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Erro ao excluir importação:', error);
+      alert('❌ Erro ao excluir importação. Tente novamente.');
+    }
+  });
+
+  const handleDeleteImport = (importGroup) => {
+    setImportToDelete(importGroup);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (importToDelete) {
+      const ids = importToDelete.transactions.map(t => t.id);
+      deleteImportMutation.mutate(ids);
+    }
+  };
+
+  // Extrai data de importação da nota
+  const getImportDate = (note) => {
+    const dateMatch = note.match(/(\d{2}\/\d{2}\/\d{4})/);
+    return dateMatch ? dateMatch[1] : 'Data desconhecida';
+  };
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -559,6 +643,55 @@ Retorne APENAS um array JSON com as categorias na mesma ordem:
         </CardContent>
       </Card>
 
+      {/* Histórico de Importações */}
+      {importHistory.length > 0 && (
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-slate-600" />
+              <CardTitle>Histórico de Importações</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {importHistory.map((importGroup, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold text-slate-900">
+                          Importação de {getImportDate(importGroup.note)}
+                        </p>
+                        <Badge variant="outline" className="text-xs">
+                          {importGroup.transactions.length} transações
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        {importGroup.bank_account}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteImport(importGroup)}
+                    className="hover:bg-rose-50 hover:text-rose-600 flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Formato Esperado do CSV</CardTitle>
@@ -581,6 +714,38 @@ Retorne APENAS um array JSON com as categorias na mesma ordem:
           </Alert>
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Importação?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Esta ação irá <strong>excluir permanentemente {importToDelete?.transactions.length} transações</strong> da importação de {importToDelete && getImportDate(importToDelete.note)}.
+            </p>
+            <Alert className="border-orange-200 bg-orange-50">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-900 text-sm">
+                <strong>Atenção:</strong> Esta ação não pode ser desfeita!
+              </AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={deleteImportMutation.isPending}
+            >
+              {deleteImportMutation.isPending ? "Excluindo..." : "Sim, Excluir"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
