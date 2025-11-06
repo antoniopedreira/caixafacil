@@ -1,48 +1,93 @@
-
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Plus, 
-  Calendar, 
+  Trash2,
   AlertCircle,
-  Bell,
   CheckCircle2,
-  TrendingDown,
-  Repeat
+  Sparkles
 } from "lucide-react";
-import { format, setDate, addMonths, isSameMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
-import RecurringExpenseCard from "../components/recurring/RecurringExpenseCard";
-import RecurringExpenseForm from "../components/recurring/RecurringExpenseForm";
+const REMINDER_OPTIONS = [
+  { value: "0", label: "No dia" },
+  { value: "1", label: "1 dia anterior" },
+  { value: "2", label: "2 dias anteriores" },
+  { value: "3", label: "3 dias anteriores" },
+  { value: "5", label: "5 dias anteriores" },
+  { value: "7", label: "7 dias anteriores" },
+];
 
 export default function RecurringExpenses() {
   const queryClient = useQueryClient();
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState(null);
+  const [newExpense, setNewExpense] = useState({
+    name: "",
+    due_day: "5",
+    reminder_days_before: "3"
+  });
 
   const { data: recurringExpenses, isLoading } = useQuery({
     queryKey: ['recurring-expenses'],
-    queryFn: () => base44.entities.RecurringExpense.list('-due_day'),
+    queryFn: () => base44.entities.RecurringExpense.list('due_day'),
     initialData: [],
   });
 
-  const { data: user } = useQuery({
-    queryKey: ['user'],
-    queryFn: () => base44.auth.me(),
+  const { data: transactions } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: () => base44.entities.Transaction.list('-date'),
+    initialData: [],
   });
 
+  // Sugere despesas recorrentes baseadas em transações
+  const suggestedExpenses = useMemo(() => {
+    const descriptionCount = {};
+    
+    // Conta transações com descrições similares
+    transactions
+      .filter(t => t.type === 'expense')
+      .forEach(t => {
+        const desc = t.description.toLowerCase().trim();
+        descriptionCount[desc] = (descriptionCount[desc] || 0) + 1;
+      });
+
+    // Filtra descrições que aparecem pelo menos 2 vezes
+    const recurring = Object.entries(descriptionCount)
+      .filter(([desc, count]) => count >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([desc]) => {
+        // Capitaliza primeira letra
+        return desc.charAt(0).toUpperCase() + desc.slice(1);
+      });
+
+    // Remove sugestões que já existem
+    const existingNames = recurringExpenses.map(e => e.name.toLowerCase());
+    return recurring.filter(name => !existingNames.includes(name.toLowerCase()));
+  }, [transactions, recurringExpenses]);
+
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.RecurringExpense.create(data),
+    mutationFn: (data) => base44.entities.RecurringExpense.create({
+      ...data,
+      category: 'outras_despesas',
+      amount: 0,
+      status: 'active',
+      notify_email: true
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-expenses'] });
-      setFormOpen(false);
-      setEditingExpense(null);
+      setNewExpense({ name: "", due_day: "5", reminder_days_before: "3" });
     },
   });
 
@@ -50,8 +95,6 @@ export default function RecurringExpenses() {
     mutationFn: ({ id, data }) => base44.entities.RecurringExpense.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-expenses'] });
-      setFormOpen(false);
-      setEditingExpense(null);
     },
   });
 
@@ -62,250 +105,246 @@ export default function RecurringExpenses() {
     },
   });
 
-  const handleSubmit = async (data) => {
-    if (editingExpense) {
-      await updateMutation.mutateAsync({ id: editingExpense.id, data });
-    } else {
-      await createMutation.mutateAsync(data);
-    }
+  const handleAddExpense = () => {
+    if (!newExpense.name.trim()) return;
+    
+    createMutation.mutate({
+      name: newExpense.name.trim(),
+      due_day: parseInt(newExpense.due_day),
+      reminder_days_before: parseInt(newExpense.reminder_days_before)
+    });
   };
 
-  const handleEdit = (expense) => {
-    setEditingExpense(expense);
-    setFormOpen(true);
+  const handleAddSuggestion = (suggestion) => {
+    createMutation.mutate({
+      name: suggestion,
+      due_day: 5,
+      reminder_days_before: 3
+    });
   };
 
-  const handleMarkAsPaid = async (expenseId) => {
-    const expense = recurringExpenses.find(e => e.id === expenseId);
+  const handleUpdateExpense = (id, field, value) => {
+    const expense = recurringExpenses.find(e => e.id === id);
     if (!expense) return;
 
-    // Atualiza a data do último pagamento
-    await updateMutation.mutateAsync({
-      id: expenseId,
-      data: {
-        ...expense,
-        last_paid_date: format(new Date(), 'yyyy-MM-dd')
-      }
-    });
-
-    // Cria uma transação para registrar o pagamento
-    await base44.entities.Transaction.create({
-      date: format(new Date(), 'yyyy-MM-dd'),
-      description: expense.name,
-      amount: -Math.abs(expense.amount),
-      type: 'expense',
-      category: expense.category,
-      payment_method: expense.payment_method || 'transferencia',
-      notes: 'Pagamento de despesa recorrente',
-      recurring: true
-    });
-
-    queryClient.invalidateQueries({ queryKey: ['transactions'] });
-  };
-
-  // Calcula estatísticas
-  const stats = React.useMemo(() => {
-    const activeExpenses = recurringExpenses.filter(e => e.status === 'active');
-    const totalMonthly = activeExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const updateData = { ...expense };
     
-    const now = new Date();
-    const upcomingCount = activeExpenses.filter(e => {
-      const dueDate = setDate(now, e.due_day);
-      const daysDiff = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
-      return daysDiff >= 0 && daysDiff <= e.reminder_days_before;
-    }).length;
+    if (field === 'name') {
+      updateData.name = value;
+    } else if (field === 'due_day') {
+      updateData.due_day = parseInt(value);
+    } else if (field === 'reminder_days_before') {
+      updateData.reminder_days_before = parseInt(value);
+    }
 
-    const overdueCount = activeExpenses.filter(e => {
-      if (e.last_paid_date) {
-        const lastPaid = new Date(e.last_paid_date);
-        if (isSameMonth(lastPaid, now)) return false;
-      }
-      const dueDate = setDate(now, e.due_day);
-      return dueDate < now;
-    }).length;
-
-    return {
-      total: activeExpenses.length,
-      totalMonthly,
-      upcoming: upcomingCount,
-      overdue: overdueCount
-    };
-  }, [recurringExpenses]);
-
-  // Função para formatar valor com ponto para milhares e vírgula para decimal
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value);
+    updateMutation.mutate({ id, data: updateData });
   };
 
   return (
     <div className="p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Despesas Recorrentes
-          </h1>
-          <p className="text-slate-600">
-            Gerencie suas contas fixas mensais e receba lembretes automáticos
-          </p>
-        </div>
-        
-        <Button
-          onClick={() => {
-            setEditingExpense(null);
-            setFormOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Despesa Recorrente
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">
+          Despesas Recorrentes
+        </h1>
+        <p className="text-slate-600">
+          Configure lembretes automáticos para suas despesas fixas
+        </p>
       </div>
 
-      {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Repeat className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-600">Total de Despesas</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                <TrendingDown className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-600">Gasto Mensal</p>
-                <p className="text-2xl font-bold text-slate-900">
-                  R$ {formatCurrency(stats.totalMonthly)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
-                <Bell className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-600">Vencendo em Breve</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.upcoming}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-rose-100 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-rose-600" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-600">Vencidas</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.overdue}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Alertas */}
-      {stats.overdue > 0 && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+      {/* Sugestões baseadas em IA */}
+      {suggestedExpenses.length > 0 && (
+        <Alert className="border-purple-200 bg-purple-50">
+          <Sparkles className="h-4 w-4 text-purple-600" />
           <AlertDescription>
-            <strong>Atenção!</strong> Você tem {stats.overdue} despesa(s) vencida(s) este mês. 
-            Marque como pago após efetuar o pagamento.
+            <div className="space-y-2">
+              <p className="font-semibold text-purple-900">
+                💡 Detectamos possíveis despesas recorrentes:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {suggestedExpenses.map((suggestion, index) => (
+                  <Badge
+                    key={index}
+                    className="bg-white text-purple-700 border-purple-300 hover:bg-purple-100 cursor-pointer"
+                    onClick={() => handleAddSuggestion(suggestion)}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    {suggestion}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-xs text-purple-700 mt-1">
+                Clique para adicionar à lista
+              </p>
+            </div>
           </AlertDescription>
         </Alert>
       )}
 
-      {stats.upcoming > 0 && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <Bell className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-900">
-            Você tem {stats.upcoming} despesa(s) vencendo em breve nos próximos dias.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Tabela de Despesas */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-lg">Lista de Despesas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {/* Header da tabela */}
+            <div className="grid grid-cols-12 gap-3 pb-2 border-b-2 border-slate-200">
+              <div className="col-span-6 font-semibold text-slate-700 text-sm">
+                Despesa
+              </div>
+              <div className="col-span-2 font-semibold text-slate-700 text-sm text-center">
+                Dia Vencimento
+              </div>
+              <div className="col-span-3 font-semibold text-slate-700 text-sm text-center">
+                Lembrete
+              </div>
+              <div className="col-span-1"></div>
+            </div>
 
-      {recurringExpenses.length === 0 && (
-        <Alert className="border-blue-200 bg-blue-50">
-          <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-900">
-            <strong>Comece agora!</strong> Cadastre suas despesas fixas mensais (aluguel, luz, internet, etc.) 
-            e receba lembretes automáticos antes do vencimento.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Lista de despesas recorrentes */}
-      {recurringExpenses.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-900">Suas Despesas Recorrentes</h2>
-            <Badge variant="outline" className="text-sm">
-              <Calendar className="w-3 h-3 mr-1" />
-              {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
-            </Badge>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Lista de despesas existentes */}
             {recurringExpenses.map((expense) => (
-              <RecurringExpenseCard
-                key={expense.id}
-                expense={expense}
-                onEdit={handleEdit}
-                onDelete={(id) => deleteMutation.mutate(id)}
-                onMarkAsPaid={handleMarkAsPaid}
-              />
+              <div key={expense.id} className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-slate-50 rounded-lg transition-colors">
+                <div className="col-span-6">
+                  <Input
+                    value={expense.name}
+                    onChange={(e) => handleUpdateExpense(expense.id, 'name', e.target.value)}
+                    onBlur={(e) => handleUpdateExpense(expense.id, 'name', e.target.value)}
+                    className="border-slate-200 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                
+                <div className="col-span-2">
+                  <Select
+                    value={expense.due_day.toString()}
+                    onValueChange={(value) => handleUpdateExpense(expense.id, 'due_day', value)}
+                  >
+                    <SelectTrigger className="border-slate-200 hover:border-blue-400">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-3">
+                  <Select
+                    value={expense.reminder_days_before.toString()}
+                    onValueChange={(value) => handleUpdateExpense(expense.id, 'reminder_days_before', value)}
+                  >
+                    <SelectTrigger className="border-slate-200 hover:border-blue-400">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REMINDER_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-1 flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteMutation.mutate(expense.id)}
+                    className="hover:bg-rose-50 hover:text-rose-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             ))}
+
+            {/* Linha para adicionar nova despesa */}
+            <div className="grid grid-cols-12 gap-3 items-center pt-3 border-t-2 border-dashed border-slate-200">
+              <div className="col-span-6">
+                <Input
+                  placeholder="Nome da despesa..."
+                  value={newExpense.name}
+                  onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddExpense()}
+                  className="border-blue-200 focus:border-blue-500"
+                />
+              </div>
+              
+              <div className="col-span-2">
+                <Select
+                  value={newExpense.due_day}
+                  onValueChange={(value) => setNewExpense({ ...newExpense, due_day: value })}
+                >
+                  <SelectTrigger className="border-blue-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <SelectItem key={day} value={day.toString()}>
+                        {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-3">
+                <Select
+                  value={newExpense.reminder_days_before}
+                  onValueChange={(value) => setNewExpense({ ...newExpense, reminder_days_before: value })}
+                >
+                  <SelectTrigger className="border-blue-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REMINDER_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="col-span-1 flex justify-center">
+                <Button
+                  onClick={handleAddExpense}
+                  disabled={!newExpense.name.trim() || createMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                  size="icon"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {recurringExpenses.length === 0 && (
+              <div className="text-center py-8 text-slate-500">
+                <p className="text-sm">Nenhuma despesa recorrente cadastrada ainda</p>
+                <p className="text-xs mt-1">Adicione uma despesa acima para começar</p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
-      {/* Formulário */}
-      <RecurringExpenseForm
-        open={formOpen}
-        onClose={() => {
-          setFormOpen(false);
-          setEditingExpense(null);
-        }}
-        expense={editingExpense}
-        onSubmit={handleSubmit}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
-
-      {/* Dicas */}
-      <Card className="border-purple-200 bg-purple-50">
+      {/* Informações */}
+      <Card className="border-blue-200 bg-blue-50">
         <CardContent className="p-6">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-            <div className="space-y-2 text-sm text-purple-900">
-              <p className="font-semibold">💡 Dicas para usar melhor esta funcionalidade:</p>
+            <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="space-y-2 text-sm text-blue-900">
+              <p className="font-semibold">💡 Como funciona:</p>
               <ul className="space-y-1 list-disc list-inside">
-                <li>Configure lembretes com antecedência para não esquecer pagamentos</li>
-                <li>Marque como "pago" após realizar o pagamento - isso cria automaticamente uma transação</li>
-                <li>Use o campo de observações para salvar informações como código de barras ou dados da conta</li>
-                <li>Desative temporariamente despesas que não estão ocorrendo (ex: férias)</li>
-                <li>Os lembretes por email são enviados automaticamente nos dias configurados</li>
+                <li>Adicione suas despesas fixas mensais (aluguel, luz, internet, etc.)</li>
+                <li>Configure o dia de vencimento e quando quer ser lembrado</li>
+                <li>Receba notificações automáticas por email nos dias configurados</li>
+                <li>Edite qualquer informação clicando diretamente nos campos</li>
               </ul>
             </div>
           </div>
