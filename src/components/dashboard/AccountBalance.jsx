@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -101,7 +102,7 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
                 </h2>
                 
                 {/* Análise comparativa */}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
                     previousMonthComparison.isPositive 
                       ? 'bg-emerald-400/30' 
@@ -120,12 +121,14 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
                     <span className="text-emerald-100 text-xs">
                       vs mês anterior R$ {formatCurrency(previousMonthComparison.previousBalance)}
                     </span>
-                    <button 
+                    <Button 
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setInfoDialogOpen(true)}
-                      className="hover:bg-emerald-400/30 rounded-full p-1 transition-colors"
+                      className="hover:bg-emerald-400/30 rounded-full h-7 w-7 p-0 min-w-0 ml-1"
                     >
-                      <HelpCircle className="w-4 h-4 text-emerald-100" />
-                    </button>
+                      <HelpCircle className="w-5 h-5 text-emerald-100" />
+                    </Button>
                   </div>
                 </div>
               </>
