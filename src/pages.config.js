@@ -6,6 +6,7 @@ import Content from './pages/Content';
 import BankConnections from './pages/BankConnections';
 import AIAssistant from './pages/AIAssistant';
 import RecurringExpenses from './pages/RecurringExpenses';
+import ManageBankAccounts from './pages/ManageBankAccounts';
 import Layout from './Layout.jsx';
 
 
@@ -18,6 +19,7 @@ export const PAGES = {
     "BankConnections": BankConnections,
     "AIAssistant": AIAssistant,
     "RecurringExpenses": RecurringExpenses,
+    "ManageBankAccounts": ManageBankAccounts,
 }
 
 export const pagesConfig = {
