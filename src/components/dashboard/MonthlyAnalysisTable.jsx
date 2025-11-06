@@ -293,16 +293,26 @@ export default function MonthlyAnalysisTable({ transactions }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Card className="border-0 shadow-md">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <CardTitle className="text-lg">Análise Mensal Comparativa</CardTitle>
-            <div className="flex flex-wrap items-center gap-3">
+        <CardHeader className="pb-2">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div className="flex items-center justify-between w-full md:w-auto">
+              <CardTitle className="text-base">Análise Mensal Comparativa</CardTitle>
+              <div className="flex items-center gap-1 text-[10px] text-slate-500 md:hidden">
+                <Info className="w-3 h-3" />
+                <span>Atualizado: {format(lastUpdateDate, "dd/MM/yyyy")}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="hidden md:flex items-center gap-1 text-xs text-slate-500 mr-2">
+                <Info className="w-3 h-3" />
+                <span>Atualizado: {format(lastUpdateDate, "dd/MM/yy")}</span>
+              </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-700">Visualização:</span>
+                <span className="text-xs font-medium text-slate-700">Visualização:</span>
                 <Select value={displayMode} onValueChange={setDisplayMode}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-28 h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -318,6 +328,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   variant={showMonths === 6 ? "default" : "outline"}
                   size="sm"
                   onClick={() => setShowMonths(6)}
+                  className="h-8 text-xs"
                 >
                   6 meses
                 </Button>
@@ -325,6 +336,7 @@ export default function MonthlyAnalysisTable({ transactions }) {
                   variant={showMonths === 12 ? "default" : "outline"}
                   size="sm"
                   onClick={() => setShowMonths(12)}
+                  className="h-8 text-xs"
                 >
                   12 meses
                 </Button>
@@ -332,19 +344,10 @@ export default function MonthlyAnalysisTable({ transactions }) {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center gap-2 text-sm text-blue-900">
-              <Info className="w-4 h-4" />
-              <span>
-                Dados atualizados até <strong>{format(lastUpdateDate, "dd/MM/yyyy", { locale: ptBR })}</strong>
-              </span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
+        <CardContent className="p-3">
+          <div className="overflow-x-auto" style={{ minHeight: '500px', maxHeight: '70vh' }}>
             <table className="w-full border-separate border-spacing-0">
-              <thead>
+              <thead className="sticky top-0 bg-white z-30">
                 <tr className="border-b-2 border-slate-200">
                   <th className="text-left p-1.5 font-semibold text-slate-900 sticky left-0 bg-white z-20 w-20">
                     
