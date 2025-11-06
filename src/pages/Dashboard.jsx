@@ -126,7 +126,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-3 md:p-4 space-y-3">
       <AccountBalance
         balance={totalBalance}
         selectedAccount={selectedAccount}
@@ -137,26 +137,26 @@ export default function Dashboard() {
         transactions={transactions}
       />
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="overview" className="gap-2">
+      <Tabs defaultValue="overview" className="space-y-3">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid h-9">
+          <TabsTrigger value="overview" className="gap-2 text-sm">
             <Calendar className="w-4 h-4" />
             Visão Geral
           </TabsTrigger>
-          <TabsTrigger value="analysis" className="gap-2">
+          <TabsTrigger value="analysis" className="gap-2 text-sm">
             <BarChart3 className="w-4 h-4" />
             Análise Avançada
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="overview" className="space-y-3 mt-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
               Resumo do Mês
             </h2>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-56 h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -209,10 +209,10 @@ export default function Dashboard() {
           <RecentTransactions transactions={transactions} />
         </TabsContent>
 
-        <TabsContent value="analysis" className="space-y-4">
+        <TabsContent value="analysis" className="space-y-3 mt-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold text-slate-900">Análise Avançada</h2>
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+            <h2 className="text-lg font-bold text-slate-900">Análise Avançada</h2>
           </div>
           
           {transactions.length === 0 ? (
