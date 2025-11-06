@@ -49,6 +49,14 @@ const CATEGORY_NAMES = {
   outras_despesas: "Outras Despesas"
 };
 
+// Função para formatar valor com ponto para milhares e vírgula para decimal
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+};
+
 export default function Transactions() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -450,7 +458,7 @@ export default function Transactions() {
                   <TableCell className={`text-right font-semibold ${
                     transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
-                    R$ {Math.abs(transaction.amount).toFixed(2)}
+                    R$ {formatCurrency(Math.abs(transaction.amount))}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
