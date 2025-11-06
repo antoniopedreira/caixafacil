@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Plus, 
+import {
+  Plus,
   Trash2,
   AlertCircle,
   CheckCircle2,
@@ -55,13 +55,13 @@ export default function RecurringExpenses() {
   // Sugere despesas recorrentes baseadas em transações COM O DIA MAIS FREQUENTE
   const suggestedExpenses = useMemo(() => {
     const descriptionData = {};
-    
+
     // Função para limpar e extrair apenas o nome do fornecedor/despesa
     const cleanDescription = (description) => {
       if (!description) return '';
-      
+
       let cleaned = description.toLowerCase().trim();
-      
+
       // Remove prefixos comuns mais agressivamente
       cleaned = cleaned
         .replace(/^pagamento\s+(de|para|a|pix|via|por)?\s*/gi, '')
@@ -80,11 +80,11 @@ export default function RecurringExpenses() {
         .replace(/^ted\s+/gi, '')
         .replace(/^doc\s+/gi, '')
         .trim();
-      
+
       // Remove datas e horários
       cleaned = cleaned.replace(/\s*\d{1,2}[\/\-\.]\d{1,2}([\/\-\.]\d{2,4})?\s*/g, ' ').trim();
       cleaned = cleaned.replace(/\s*\d{2}:\d{2}(:\d{2})?\s*/g, ' ').trim();
-      
+
       // Remove números de referência, protocolo, CPF/CNPJ
       cleaned = cleaned.replace(/ref[:\s]+[\w\d]+/gi, '').trim();
       cleaned = cleaned.replace(/protocolo[:\s]+[\w\d]+/gi, '').trim();
@@ -92,45 +92,60 @@ export default function RecurringExpenses() {
       cleaned = cleaned.replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, '').trim();
       cleaned = cleaned.replace(/cpf[:\s]+[\d\.\-\/]+/gi, '').trim();
       cleaned = cleaned.replace(/cnpj[:\s]+[\d\.\-\/]+/gi, '').trim();
-      
+
       // Remove números de conta, agência
       cleaned = cleaned.replace(/ag[:\s]+\d+/gi, '').trim();
       cleaned = cleaned.replace(/cc[:\s]+\d+/gi, '').trim();
       cleaned = cleaned.replace(/conta[:\s]+\d+/gi, '').trim();
-      
+
       // Remove preposições e artigos isolados no início
       cleaned = cleaned.replace(/^(de|da|do|das|dos|a|o|as|os|em|na|no|nas|nos|para|por|via)\s+/gi, '').trim();
-      
+
       // Remove múltiplos espaços
       cleaned = cleaned.replace(/\s+/g, ' ').trim();
-      
-      // Pega apenas as primeiras 2 palavras significativas
-      const words = cleaned.split(' ').filter(w => w.length > 2); // ignora palavras muito curtas
-      const mainWords = words.slice(0, 2).join(' ');
-      
-      // Capitaliza primeira letra de cada palavra, exceto preposições
-      const finalWords = mainWords.split(' ');
-      const capitalized = finalWords.map(word => {
-        if (!word) return '';
-        if (['de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'em', 'para', 'com', 'por', 'via'].includes(word.toLowerCase())) {
-          return word.toLowerCase();
+
+      // Pega APENAS A PRIMEIRA palavra significativa (mais de 2 letras)
+      const words = cleaned.split(' ').filter(w => w.length > 2);
+      let selectedText = '';
+
+      if (words.length > 0) {
+        // Prioriza a primeira palavra significativa
+        selectedText = words[0];
+        // Se a primeira palavra é muito curta (até 4 letras) e há mais de uma palavra significativa,
+        // tenta pegar as duas primeiras palavras significativas.
+        if (selectedText.length <= 4 && words.length > 1) {
+          selectedText = words.slice(0, 2).join(' ');
         }
+      } else {
+        // Se não há palavras significativas (>2 letras), pega a primeira palavra não filtrada
+        const allWords = cleaned.split(' ');
+        if (allWords.length > 0) {
+          selectedText = allWords[0];
+          // Se a primeira palavra não filtrada é muito curta e há mais de uma palavra, tenta pegar as duas
+          if (selectedText.length <= 4 && allWords.length > 1) {
+            selectedText = allWords.slice(0, 2).join(' ');
+          }
+        }
+      }
+
+      // Capitaliza a primeira letra de cada palavra em selectedText
+      if (!selectedText) return '';
+      return selectedText.split(' ').map(word => {
+        if (!word) return '';
         return word.charAt(0).toUpperCase() + word.slice(1);
       }).join(' ');
-      
-      return capitalized;
     };
-    
+
     // Agrupa transações por descrição similar
     transactions
       .filter(t => t.type === 'expense')
       .forEach(t => {
         const cleanedDesc = cleanDescription(t.description);
         if (!cleanedDesc) return; // Skip if description is empty after cleaning
-        
+
         const date = new Date(t.date);
         const day = date.getDate();
-        
+
         if (!descriptionData[cleanedDesc]) {
           descriptionData[cleanedDesc] = {
             count: 0,
@@ -152,10 +167,10 @@ export default function RecurringExpenses() {
         data.days.forEach(day => {
           dayFrequency[day] = (dayFrequency[day] || 0) + 1;
         });
-        
+
         const mostFrequentDay = Object.entries(dayFrequency)
           .sort((a, b) => b[1] - a[1])[0][0];
-        
+
         return {
           name: desc,
           suggestedDay: parseInt(mostFrequentDay)
@@ -198,7 +213,7 @@ export default function RecurringExpenses() {
 
   const handleAddExpense = () => {
     if (!newExpense.name.trim()) return;
-    
+
     createMutation.mutate({
       name: newExpense.name.trim(),
       due_day: parseInt(newExpense.due_day),
@@ -239,7 +254,7 @@ export default function RecurringExpenses() {
     if (!expense) return;
 
     const updateData = { ...expense };
-    
+
     if (field === 'due_day') {
       updateData.due_day = parseInt(value);
     } else if (field === 'reminder_days_before') {
@@ -335,7 +350,7 @@ export default function RecurringExpenses() {
                     className="border-slate-200 hover:border-blue-400 focus:border-blue-500 transition-colors w-full"
                   />
                 </div>
-                
+
                 {/* Dia Vencimento */}
                 <div className="md:col-span-3">
                   <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
@@ -409,7 +424,7 @@ export default function RecurringExpenses() {
                   className="border-blue-200 focus:border-blue-500 w-full"
                 />
               </div>
-              
+
               {/* Dia vencimento */}
               <div className="md:col-span-3">
                 <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
