@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Loader2, Link as LinkIcon } from "lucide-react";
+import { Loader2, Link as LinkIcon, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { base44 } from "@/api/base44Client";
 
@@ -9,111 +9,127 @@ export default function ConnectBankButton({ onSuccess }) {
   const [error, setError] = useState(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [loadingScript, setLoadingScript] = useState(true);
+  const [debugInfo, setDebugInfo] = useState([]);
+
+  const addDebugInfo = (message) => {
+    console.log(message);
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
 
   useEffect(() => {
-    let checkInterval;
-    
-    const loadScript = () => {
-      console.log('🔄 Iniciando carregamento do script Pluggy...');
-      
-      // Verifica se já existe
-      if (window.PluggyConnect) {
-        console.log('✅ PluggyConnect já existe!');
-        setScriptLoaded(true);
-        setLoadingScript(false);
-        return;
-      }
-
-      // Remove script existente se houver
-      const existingScript = document.querySelector('script[src*="pluggy-connect"]');
-      if (existingScript) {
-        console.log('🗑️ Removendo script antigo...');
-        existingScript.remove();
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://cdn.pluggy.ai/pluggy-connect/v3/pluggy-connect.js';
-      script.async = true;
-      script.id = 'pluggy-connect-script';
-      
-      script.onload = () => {
-        console.log('📦 Script carregado, aguardando PluggyConnect...');
-        
-        // Verifica múltiplas vezes se o PluggyConnect está disponível
-        let attempts = 0;
-        checkInterval = setInterval(() => {
-          attempts++;
-          console.log(`🔍 Tentativa ${attempts} de encontrar PluggyConnect...`);
-          
-          if (window.PluggyConnect) {
-            console.log('✅ PluggyConnect encontrado!');
-            clearInterval(checkInterval);
-            setScriptLoaded(true);
-            setLoadingScript(false);
-          } else if (attempts > 20) {
-            console.error('❌ Timeout: PluggyConnect não foi carregado após 20 tentativas');
-            clearInterval(checkInterval);
-            setError('Componente não carregou. Recarregue a página (F5) e tente novamente.');
-            setLoadingScript(false);
-          }
-        }, 200);
-      };
-      
-      script.onerror = (e) => {
-        console.error('❌ Erro ao carregar script:', e);
-        setError('Erro ao carregar componente. Verifique sua conexão de internet.');
-        setLoadingScript(false);
-      };
-
-      console.log('📥 Adicionando script ao DOM...');
-      document.head.appendChild(script);
-    };
-
-    loadScript();
-
-    return () => {
-      if (checkInterval) {
-        clearInterval(checkInterval);
-      }
-    };
+    loadPluggyScript();
   }, []);
 
+  const loadPluggyScript = () => {
+    setLoadingScript(true);
+    setScriptLoaded(false);
+    setError(null);
+    setDebugInfo([]);
+    
+    addDebugInfo('🔄 Iniciando carregamento do script Pluggy...');
+    
+    // Verifica se já existe
+    if (window.PluggyConnect) {
+      addDebugInfo('✅ PluggyConnect já disponível!');
+      setScriptLoaded(true);
+      setLoadingScript(false);
+      return;
+    }
+
+    // Remove script existente
+    const existingScript = document.querySelector('script[src*="pluggy-connect"]');
+    if (existingScript) {
+      addDebugInfo('🗑️ Removendo script antigo...');
+      existingScript.remove();
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.pluggy.ai/pluggy-connect/v3/pluggy-connect.js';
+    script.async = true;
+    script.id = 'pluggy-connect-script';
+    
+    let attempts = 0;
+    let checkInterval;
+    
+    script.onload = () => {
+      addDebugInfo('📦 Script carregado, verificando PluggyConnect...');
+      
+      checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (window.PluggyConnect) {
+          addDebugInfo(`✅ PluggyConnect encontrado após ${attempts} tentativas!`);
+          clearInterval(checkInterval);
+          setScriptLoaded(true);
+          setLoadingScript(false);
+        } else if (attempts > 30) {
+          addDebugInfo('❌ Timeout: PluggyConnect não foi encontrado');
+          clearInterval(checkInterval);
+          setError('Componente não carregou. Possíveis causas: bloqueador de anúncios, firewall ou problema de conexão.');
+          setLoadingScript(false);
+        }
+      }, 200);
+    };
+    
+    script.onerror = (e) => {
+      addDebugInfo('❌ Erro ao carregar script do CDN');
+      setError('Não foi possível carregar o componente do Pluggy. Verifique: 1) Sua conexão com internet 2) Se há bloqueador de anúncios ativo 3) Se o firewall está bloqueando cdn.pluggy.ai');
+      setLoadingScript(false);
+    };
+
+    addDebugInfo('📥 Adicionando script ao documento...');
+    document.head.appendChild(script);
+
+    // Timeout geral
+    setTimeout(() => {
+      if (checkInterval && !scriptLoaded) {
+        clearInterval(checkInterval);
+        if (!error) {
+          addDebugInfo('⏱️ Timeout geral atingido');
+          setError('Tempo esgotado. Recarregue a página (F5) e tente novamente.');
+          setLoadingScript(false);
+        }
+      }
+    }, 10000);
+  };
+
   const connectBank = async () => {
-    console.log('🚀 Iniciando conexão bancária...');
+    addDebugInfo('🚀 Iniciando conexão bancária...');
     setLoading(true);
     setError(null);
 
     try {
-      console.log('🔑 1. Solicitando token...');
+      addDebugInfo('🔑 Solicitando token de conexão...');
       
       const response = await base44.functions.invoke('createPluggyConnectToken', {});
       
-      console.log('📦 2. Resposta recebida:', { 
-        success: response.data?.success, 
-        hasToken: !!response.data?.accessToken 
-      });
+      addDebugInfo(`📦 Resposta recebida: ${JSON.stringify({ success: response.data?.success, hasToken: !!response.data?.accessToken })}`);
 
       if (!response.data?.success) {
-        throw new Error(response.data?.error || 'Erro ao criar token');
+        const errorMsg = response.data?.error || 'Erro desconhecido';
+        addDebugInfo(`❌ Erro na resposta: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
 
       if (!response.data.accessToken) {
-        throw new Error('Token não foi retornado');
+        addDebugInfo('❌ Token não foi retornado');
+        throw new Error('Token não foi retornado pelo servidor');
       }
 
-      console.log('✅ 3. Token obtido com sucesso');
+      addDebugInfo('✅ Token obtido com sucesso');
 
       if (!window.PluggyConnect) {
-        throw new Error('O componente Pluggy não está disponível. Recarregue a página (F5).');
+        addDebugInfo('❌ PluggyConnect não disponível');
+        throw new Error('O componente Pluggy não está disponível. Tente recarregar.');
       }
 
-      console.log('🎨 4. Criando widget Pluggy...');
+      addDebugInfo('🎨 Criando widget Pluggy...');
 
       const pluggyConnect = new window.PluggyConnect({
         connectToken: response.data.accessToken,
         includeSandbox: true,
         onSuccess: async (itemData) => {
-          console.log('✅ Banco conectado com sucesso!', itemData);
+          addDebugInfo('✅ Banco conectado com sucesso!');
           
           if (onSuccess) {
             await onSuccess(itemData);
@@ -122,34 +138,30 @@ export default function ConnectBankButton({ onSuccess }) {
           setLoading(false);
         },
         onError: (error) => {
-          console.error('❌ Erro no widget:', error);
+          addDebugInfo(`❌ Erro no widget: ${error?.message || 'Erro desconhecido'}`);
           setError('Erro ao conectar: ' + (error?.message || 'Tente novamente'));
           setLoading(false);
         },
         onClose: () => {
-          console.log('🚪 Widget fechado pelo usuário');
+          addDebugInfo('🚪 Widget fechado pelo usuário');
           setLoading(false);
         },
       });
 
-      console.log('📱 5. Abrindo widget...');
+      addDebugInfo('📱 Abrindo widget...');
       pluggyConnect.init();
       
     } catch (err) {
-      console.error('❌ Erro geral:', err);
+      addDebugInfo(`❌ Erro geral: ${err.message}`);
       
       let errorMessage = 'Erro ao conectar banco';
       
-      if (err?.message) {
-        if (err.message.includes('Credenciais') || err.message.includes('inválidas')) {
-          errorMessage = '⚠️ Configure as credenciais do Pluggy primeiro (veja instruções acima)';
-        } else if (err.message.includes('componente') || err.message.includes('disponível')) {
-          errorMessage = err.message;
-        } else if (err.message.includes('Token')) {
-          errorMessage = '⚠️ Erro nas credenciais do Pluggy. Verifique os secrets configurados.';
-        } else {
-          errorMessage = err.message;
-        }
+      if (err?.message?.includes('Credenciais') || err?.message?.includes('inválidas')) {
+        errorMessage = '⚠️ Credenciais do Pluggy não configuradas ou inválidas. Veja as instruções acima.';
+      } else if (err?.message?.includes('Token')) {
+        errorMessage = '⚠️ Erro ao gerar token. Verifique as credenciais do Pluggy nas configurações.';
+      } else {
+        errorMessage = err.message || errorMessage;
       }
       
       setError(errorMessage);
@@ -188,17 +200,44 @@ export default function ConnectBankButton({ onSuccess }) {
       </Button>
 
       {error && (
-        <Alert variant="destructive">
-          <AlertDescription className="text-sm">
-            {error}
-          </AlertDescription>
-        </Alert>
+        <div className="space-y-2">
+          <Alert variant="destructive">
+            <AlertDescription className="text-sm">
+              {error}
+            </AlertDescription>
+          </Alert>
+          
+          {!scriptLoaded && (
+            <Button 
+              variant="outline" 
+              onClick={loadPluggyScript}
+              className="w-full"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Tentar Carregar Novamente
+            </Button>
+          )}
+          
+          {/* Debug info - mostrar apenas em desenvolvimento */}
+          {debugInfo.length > 0 && (
+            <details className="text-xs bg-slate-50 p-3 rounded-lg">
+              <summary className="cursor-pointer font-semibold text-slate-700 mb-2">
+                Informações de diagnóstico
+              </summary>
+              <div className="space-y-1 text-slate-600 max-h-40 overflow-y-auto">
+                {debugInfo.map((info, i) => (
+                  <div key={i}>{info}</div>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
       )}
 
       {!scriptLoaded && !loadingScript && !error && (
         <Alert className="border-orange-200 bg-orange-50">
           <AlertDescription className="text-orange-900 text-sm">
-            ⚠️ Componente não carregou completamente. Recarregue a página (F5) e tente novamente.
+            ⚠️ Componente não carregou. Tente recarregar a página (F5) ou clique em "Tentar Carregar Novamente".
           </AlertDescription>
         </Alert>
       )}
