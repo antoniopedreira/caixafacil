@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -131,6 +132,14 @@ export default function RecurringExpenses() {
     };
   }, [recurringExpenses]);
 
+  // Função para formatar valor com ponto para milhares e vírgula para decimal
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       {/* Header */}
@@ -181,7 +190,7 @@ export default function RecurringExpenses() {
               <div>
                 <p className="text-sm text-slate-600">Gasto Mensal</p>
                 <p className="text-2xl font-bold text-slate-900">
-                  R$ {stats.totalMonthly.toFixed(2)}
+                  R$ {formatCurrency(stats.totalMonthly)}
                 </p>
               </div>
             </div>
