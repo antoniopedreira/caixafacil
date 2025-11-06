@@ -26,7 +26,7 @@ export default function ConnectBankButton({ onSuccess }) {
     setError(null);
     setDebugInfo([]);
     
-    addDebugInfo('🔄 Iniciando carregamento do script Pluggy...');
+    addDebugInfo('🔄 Iniciando carregamento do Pluggy Connect...');
     
     // Verifica se já existe
     if (window.PluggyConnect) {
@@ -36,100 +36,113 @@ export default function ConnectBankButton({ onSuccess }) {
       return;
     }
 
-    // Remove script existente
-    const existingScript = document.querySelector('script[src*="pluggy-connect"]');
-    if (existingScript) {
-      addDebugInfo('🗑️ Removendo script antigo...');
-      existingScript.remove();
+    // Remove script existente com qualquer URL relacionada ao Pluggy
+    const existingScripts = document.querySelectorAll('script[src*="pluggy"]');
+    if (existingScripts.length > 0) {
+      addDebugInfo(`🗑️ Removendo ${existingScripts.length} script(s) antigo(s) do Pluggy...`);
+      existingScripts.forEach(s => s.remove());
     }
 
+    // URL correta do Pluggy Connect v3
+    const PLUGGY_CDN_URL = 'https://cdn.pluggy.ai/pluggy-connect/v3/pluggy-connect.js';
+    addDebugInfo(`📥 URL do script: ${PLUGGY_CDN_URL}`);
+
     const script = document.createElement('script');
-    script.src = 'https://cdn.pluggy.ai/pluggy-connect/v3/pluggy-connect.js';
+    script.src = PLUGGY_CDN_URL;
     script.async = true;
     script.id = 'pluggy-connect-script';
+    script.crossOrigin = 'anonymous';
     
     let attempts = 0;
     let checkInterval;
     
     script.onload = () => {
-      addDebugInfo('📦 Script carregado, verificando PluggyConnect...');
+      addDebugInfo('📦 Script carregado do CDN com sucesso');
       
       checkInterval = setInterval(() => {
         attempts++;
+        addDebugInfo(`🔍 Verificando PluggyConnect (tentativa ${attempts})...`);
         
         if (window.PluggyConnect) {
-          addDebugInfo(`✅ PluggyConnect encontrado após ${attempts} tentativas!`);
+          addDebugInfo(`✅ PluggyConnect disponível após ${attempts} tentativa(s)!`);
           clearInterval(checkInterval);
           setScriptLoaded(true);
           setLoadingScript(false);
         } else if (attempts > 30) {
-          addDebugInfo('❌ Timeout: PluggyConnect não foi encontrado');
+          addDebugInfo('❌ Timeout: PluggyConnect não foi encontrado após 30 tentativas');
           clearInterval(checkInterval);
-          setError('Componente não carregou. Possíveis causas: bloqueador de anúncios, firewall ou problema de conexão.');
+          setError('O componente Pluggy não inicializou. Isso pode acontecer se: (1) Há um bloqueador de anúncios ativo, (2) Seu firewall está bloqueando cdn.pluggy.ai, (3) Problemas temporários no CDN do Pluggy');
           setLoadingScript(false);
         }
       }, 200);
     };
     
     script.onerror = (e) => {
-      addDebugInfo('❌ Erro ao carregar script do CDN');
-      setError('Não foi possível carregar o componente do Pluggy. Verifique: 1) Sua conexão com internet 2) Se há bloqueador de anúncios ativo 3) Se o firewall está bloqueando cdn.pluggy.ai');
+      addDebugInfo(`❌ ERRO ao carregar do CDN: ${e.toString()}`);
+      addDebugInfo(`URL tentada: ${PLUGGY_CDN_URL}`);
+      setError(`Não foi possível carregar o Pluggy Connect. Possíveis causas:
+      
+• Bloqueador de anúncios ativo (desative para esta página)
+• Firewall corporativo bloqueando cdn.pluggy.ai
+• Problemas temporários no CDN do Pluggy
+
+Tente: (1) Desativar bloqueadores, (2) Usar outra rede, (3) Tentar novamente em alguns minutos`);
       setLoadingScript(false);
     };
 
     addDebugInfo('📥 Adicionando script ao documento...');
     document.head.appendChild(script);
 
-    // Timeout geral
+    // Timeout geral de 15 segundos
     setTimeout(() => {
       if (checkInterval && !scriptLoaded) {
         clearInterval(checkInterval);
         if (!error) {
-          addDebugInfo('⏱️ Timeout geral atingido');
-          setError('Tempo esgotado. Recarregue a página (F5) e tente novamente.');
+          addDebugInfo('⏱️ Timeout geral atingido (15s)');
+          setError('Tempo limite excedido ao carregar o componente. Recarregue a página (F5) e tente novamente.');
           setLoadingScript(false);
         }
       }
-    }, 10000);
+    }, 15000);
   };
 
   const connectBank = async () => {
-    addDebugInfo('🚀 Iniciando conexão bancária...');
+    addDebugInfo('🚀 Iniciando processo de conexão bancária...');
     setLoading(true);
     setError(null);
 
     try {
-      addDebugInfo('🔑 Solicitando token de conexão...');
+      if (!window.PluggyConnect) {
+        addDebugInfo('❌ PluggyConnect não está disponível no window');
+        throw new Error('O componente Pluggy não está carregado. Por favor, recarregue a página (F5) e tente novamente.');
+      }
+
+      addDebugInfo('🔑 Solicitando token de acesso...');
       
       const response = await base44.functions.invoke('createPluggyConnectToken', {});
       
-      addDebugInfo(`📦 Resposta recebida: ${JSON.stringify({ success: response.data?.success, hasToken: !!response.data?.accessToken })}`);
+      addDebugInfo(`📦 Resposta recebida - Status: ${response.status}`);
+      addDebugInfo(`📦 Dados: ${JSON.stringify({ success: response.data?.success, hasToken: !!response.data?.accessToken })}`);
 
       if (!response.data?.success) {
-        const errorMsg = response.data?.error || 'Erro desconhecido';
-        addDebugInfo(`❌ Erro na resposta: ${errorMsg}`);
+        const errorMsg = response.data?.error || 'Erro desconhecido ao criar token';
+        addDebugInfo(`❌ Erro do servidor: ${errorMsg}`);
         throw new Error(errorMsg);
       }
 
       if (!response.data.accessToken) {
-        addDebugInfo('❌ Token não foi retornado');
-        throw new Error('Token não foi retornado pelo servidor');
+        addDebugInfo('❌ Token não retornado pelo servidor');
+        throw new Error('Token de acesso não foi retornado. Verifique as credenciais do Pluggy.');
       }
 
-      addDebugInfo('✅ Token obtido com sucesso');
-
-      if (!window.PluggyConnect) {
-        addDebugInfo('❌ PluggyConnect não disponível');
-        throw new Error('O componente Pluggy não está disponível. Tente recarregar.');
-      }
-
-      addDebugInfo('🎨 Criando widget Pluggy...');
+      addDebugInfo('✅ Token obtido, criando widget...');
 
       const pluggyConnect = new window.PluggyConnect({
         connectToken: response.data.accessToken,
         includeSandbox: true,
         onSuccess: async (itemData) => {
           addDebugInfo('✅ Banco conectado com sucesso!');
+          addDebugInfo(`Item ID: ${itemData?.item?.id}`);
           
           if (onSuccess) {
             await onSuccess(itemData);
@@ -138,8 +151,8 @@ export default function ConnectBankButton({ onSuccess }) {
           setLoading(false);
         },
         onError: (error) => {
-          addDebugInfo(`❌ Erro no widget: ${error?.message || 'Erro desconhecido'}`);
-          setError('Erro ao conectar: ' + (error?.message || 'Tente novamente'));
+          addDebugInfo(`❌ Erro no widget Pluggy: ${error?.message || 'Erro desconhecido'}`);
+          setError('Erro ao conectar com o banco: ' + (error?.message || 'Tente novamente'));
           setLoading(false);
         },
         onClose: () => {
@@ -148,7 +161,7 @@ export default function ConnectBankButton({ onSuccess }) {
         },
       });
 
-      addDebugInfo('📱 Abrindo widget...');
+      addDebugInfo('📱 Abrindo widget do Pluggy...');
       pluggyConnect.init();
       
     } catch (err) {
@@ -157,9 +170,11 @@ export default function ConnectBankButton({ onSuccess }) {
       let errorMessage = 'Erro ao conectar banco';
       
       if (err?.message?.includes('Credenciais') || err?.message?.includes('inválidas')) {
-        errorMessage = '⚠️ Credenciais do Pluggy não configuradas ou inválidas. Veja as instruções acima.';
+        errorMessage = '⚠️ Credenciais do Pluggy inválidas ou não configuradas. Verifique os secrets PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET.';
       } else if (err?.message?.includes('Token')) {
-        errorMessage = '⚠️ Erro ao gerar token. Verifique as credenciais do Pluggy nas configurações.';
+        errorMessage = '⚠️ ' + err.message;
+      } else if (err?.message?.includes('não está carregado') || err?.message?.includes('disponível')) {
+        errorMessage = err.message;
       } else {
         errorMessage = err.message || errorMessage;
       }
@@ -202,7 +217,7 @@ export default function ConnectBankButton({ onSuccess }) {
       {error && (
         <div className="space-y-2">
           <Alert variant="destructive">
-            <AlertDescription className="text-sm">
+            <AlertDescription className="text-sm whitespace-pre-line">
               {error}
             </AlertDescription>
           </Alert>
@@ -218,15 +233,17 @@ export default function ConnectBankButton({ onSuccess }) {
             </Button>
           )}
           
-          {/* Debug info - mostrar apenas em desenvolvimento */}
+          {/* Debug info */}
           {debugInfo.length > 0 && (
-            <details className="text-xs bg-slate-50 p-3 rounded-lg">
+            <details className="text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
               <summary className="cursor-pointer font-semibold text-slate-700 mb-2">
-                Informações de diagnóstico
+                📋 Logs de Diagnóstico (clique para expandir)
               </summary>
-              <div className="space-y-1 text-slate-600 max-h-40 overflow-y-auto">
+              <div className="space-y-1 text-slate-600 max-h-60 overflow-y-auto font-mono">
                 {debugInfo.map((info, i) => (
-                  <div key={i}>{info}</div>
+                  <div key={i} className="border-b border-slate-200 pb-1">
+                    {info}
+                  </div>
                 ))}
               </div>
             </details>
@@ -237,7 +254,7 @@ export default function ConnectBankButton({ onSuccess }) {
       {!scriptLoaded && !loadingScript && !error && (
         <Alert className="border-orange-200 bg-orange-50">
           <AlertDescription className="text-orange-900 text-sm">
-            ⚠️ Componente não carregou. Tente recarregar a página (F5) ou clique em "Tentar Carregar Novamente".
+            ⚠️ Componente não carregou completamente. Recarregue a página (F5) ou clique em "Tentar Carregar Novamente".
           </AlertDescription>
         </Alert>
       )}
