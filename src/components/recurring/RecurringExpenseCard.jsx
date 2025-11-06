@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,14 @@ const CATEGORY_NAMES = {
   combustivel_transporte: "Transporte",
   emprestimos_pagos: "Empréstimos",
   outras_despesas: "Outras Despesas"
+};
+
+// Função para formatar valor com ponto para milhares e vírgula para decimal
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
 };
 
 export default function RecurringExpenseCard({ expense, onEdit, onDelete, onMarkAsPaid }) {
@@ -105,7 +114,7 @@ export default function RecurringExpenseCard({ expense, onEdit, onDelete, onMark
               </Badge>
             </div>
             <p className="text-2xl font-bold text-slate-900">
-              R$ {expense.amount.toFixed(2)}
+              R$ {formatCurrency(expense.amount)}
             </p>
           </div>
           
