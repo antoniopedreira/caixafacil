@@ -1,12 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Eye, EyeOff, TrendingUp, TrendingDown, HelpCircle } from "lucide-react";
 import { subMonths, startOfMonth, isBefore, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -20,6 +20,8 @@ const formatCurrency = (value) => {
 };
 
 export default function AccountBalance({ balance, selectedAccount, onAccountChange, accounts, showBalance, onToggleBalance, transactions = [] }) {
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+
   // Calcula o saldo do mesmo dia do mês anterior
   const previousMonthComparison = useMemo(() => {
     const now = new Date();
@@ -69,96 +71,120 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
   };
 
   return (
-    <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-xl text-white">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-1">
-          <div>
-            <span className="text-emerald-100 text-sm font-medium">Saldo bancário</span>
-            <p className="text-emerald-100 text-xs mt-0.5">
-              Atualizado há 5 minutos
-            </p>
+    <>
+      <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-xl text-white">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <span className="text-emerald-100 text-sm font-medium">Saldo bancário</span>
+              <p className="text-emerald-100 text-xs mt-0.5">
+                Atualizado há 5 minutos
+              </p>
+            </div>
+            <button
+              onClick={onToggleBalance}
+              className="p-1.5 hover:bg-emerald-400/30 rounded-lg transition-colors"
+            >
+              {showBalance ? (
+                <Eye className="w-4 h-4" />
+              ) : (
+                <EyeOff className="w-4 h-4" />
+              )}
+            </button>
           </div>
-          <button
-            onClick={onToggleBalance}
-            className="p-1.5 hover:bg-emerald-400/30 rounded-lg transition-colors"
-          >
+
+          <div className="mb-2">
             {showBalance ? (
-              <Eye className="w-4 h-4" />
+              <>
+                <h2 className="text-3xl font-bold">
+                  R$ {formatCurrency(balance)}
+                </h2>
+                
+                {/* Análise comparativa */}
+                <div className="flex items-center gap-2 mt-2">
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                    previousMonthComparison.isPositive 
+                      ? 'bg-emerald-400/30' 
+                      : 'bg-rose-400/30'
+                  }`}>
+                    {previousMonthComparison.isPositive ? (
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <TrendingDown className="w-3.5 h-3.5" />
+                    )}
+                    <span className="text-xs font-semibold">
+                      {Math.abs(previousMonthComparison.variation).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-emerald-100 text-xs">
+                      vs mês anterior R$ {formatCurrency(previousMonthComparison.previousBalance)}
+                    </span>
+                    <button 
+                      onClick={() => setInfoDialogOpen(true)}
+                      className="hover:bg-emerald-400/30 rounded-full p-1 transition-colors"
+                    >
+                      <HelpCircle className="w-4 h-4 text-emerald-100" />
+                    </button>
+                  </div>
+                </div>
+              </>
             ) : (
-              <EyeOff className="w-4 h-4" />
+              <h2 className="text-3xl font-bold">R$ ••••••</h2>
             )}
-          </button>
-        </div>
+          </div>
 
-        <div className="mb-2">
-          {showBalance ? (
-            <>
-              <h2 className="text-3xl font-bold">
-                R$ {formatCurrency(balance)}
-              </h2>
-              
-              {/* Análise comparativa */}
-              <div className="flex items-center gap-2 mt-2">
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
-                  previousMonthComparison.isPositive 
-                    ? 'bg-emerald-400/30' 
-                    : 'bg-rose-400/30'
-                }`}>
-                  {previousMonthComparison.isPositive ? (
-                    <TrendingUp className="w-3.5 h-3.5" />
-                  ) : (
-                    <TrendingDown className="w-3.5 h-3.5" />
-                  )}
-                  <span className="text-xs font-semibold">
-                    {Math.abs(previousMonthComparison.variation).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-emerald-100 text-xs">
-                    vs mês anterior R$ {formatCurrency(previousMonthComparison.previousBalance)}
-                  </span>
-                  <TooltipProvider>
-                    <Tooltip delayDuration={0}>
-                      <TooltipTrigger asChild>
-                        <button className="hover:bg-emerald-400/30 rounded-full p-0.5 transition-colors">
-                          <HelpCircle className="w-3.5 h-3.5 text-emerald-100" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-white text-slate-900 p-3">
-                        <p className="text-sm leading-relaxed">
-                          No mesmo dia do mês anterior ({format(previousMonthComparison.previousDate, "dd/MM/yyyy")}), 
-                          o seu saldo bancário era de{' '}
-                          <strong>R$ {formatCurrency(previousMonthComparison.previousBalance)}</strong>.
-                          {' '}Ou seja, hoje o seu saldo em caixa é{' '}
-                          <strong className={previousMonthComparison.isPositive ? 'text-emerald-600' : 'text-rose-600'}>
-                            {Math.abs(previousMonthComparison.variation).toFixed(1)}% {previousMonthComparison.isPositive ? 'maior' : 'menor'}
-                          </strong>.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            </>
-          ) : (
-            <h2 className="text-3xl font-bold">R$ ••••••</h2>
-          )}
+          <Select value={selectedAccount} onValueChange={onAccountChange}>
+            <SelectTrigger className="bg-emerald-400/30 border-0 text-white hover:bg-emerald-400/40 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{accounts.length === 1 ? accounts[0] : "Todas as contas"}</SelectItem>
+              {accounts.length > 1 && accounts.map((account) => (
+                <SelectItem key={account} value={account}>
+                  {account}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </Card>
 
-        <Select value={selectedAccount} onValueChange={onAccountChange}>
-          <SelectTrigger className="bg-emerald-400/30 border-0 text-white hover:bg-emerald-400/40 h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{accounts.length === 1 ? accounts[0] : "Todas as contas"}</SelectItem>
-            {accounts.length > 1 && accounts.map((account) => (
-              <SelectItem key={account} value={account}>
-                {account}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </Card>
+      {/* Dialog de informação */}
+      <Dialog open={infoDialogOpen} onOpenChange={setInfoDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-emerald-600" />
+              Comparação com Mês Anterior
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <p className="leading-relaxed text-slate-700">
+              No mesmo dia do mês anterior ({format(previousMonthComparison.previousDate, "dd/MM/yyyy")}), 
+              o seu saldo bancário era de{' '}
+              <strong className="text-slate-900">R$ {formatCurrency(previousMonthComparison.previousBalance)}</strong>.
+            </p>
+            <p className="leading-relaxed text-slate-700">
+              Hoje, o seu saldo em caixa é{' '}
+              <strong className={previousMonthComparison.isPositive ? 'text-emerald-600' : 'text-rose-600'}>
+                {Math.abs(previousMonthComparison.variation).toFixed(1)}% {previousMonthComparison.isPositive ? 'maior' : 'menor'}
+              </strong>.
+            </p>
+            <div className={`p-3 rounded-lg ${
+              previousMonthComparison.isPositive ? 'bg-emerald-50' : 'bg-rose-50'
+            }`}>
+              <p className={`text-sm font-semibold ${
+                previousMonthComparison.isPositive ? 'text-emerald-900' : 'text-rose-900'
+              }`}>
+                {previousMonthComparison.isPositive 
+                  ? '✅ Seu saldo está crescendo! Continue assim.' 
+                  : '⚠️ Seu saldo está diminuindo. Revise suas despesas.'}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
