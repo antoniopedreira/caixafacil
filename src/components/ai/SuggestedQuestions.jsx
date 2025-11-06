@@ -5,13 +5,15 @@ import { Sparkles } from "lucide-react";
 
 const SUGGESTED_QUESTIONS = [
   "Como posso melhorar meu fluxo de caixa?",
-  "Meus gastos com marketing estão muito altos?",
-  "Quais são minhas maiores despesas?",
-  "Como posso reduzir custos operacionais?",
-  "Devo investir em novos equipamentos agora?",
-  "Como está minha saúde financeira?",
-  "Qual categoria de despesa devo focar em reduzir?",
-  "Minhas receitas estão crescendo adequadamente?"
+  "Quais despesas devo focar em reduzir?",
+  "Minha margem de lucro está saudável?",
+  "Como aumentar minhas receitas?",
+  "Estou gastando muito em alguma categoria?",
+  "Devo contratar mais funcionários agora?",
+  "Como posso precificar melhor meus produtos/serviços?",
+  "Qual o melhor momento para investir no negócio?",
+  "Como me preparar para períodos de baixa?",
+  "Preciso fazer um empréstimo ou tenho caixa suficiente?"
 ];
 
 export default function SuggestedQuestions({ onSelectQuestion }) {
