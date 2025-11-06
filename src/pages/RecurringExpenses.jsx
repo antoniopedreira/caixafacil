@@ -279,12 +279,12 @@ export default function RecurringExpenses() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {/* Header da tabela */}
-            <div className="grid grid-cols-12 gap-3 pb-2 border-b-2 border-slate-200">
-              <div className="col-span-6 font-semibold text-slate-700 text-sm">
+            {/* Header da tabela - responsivo */}
+            <div className="hidden md:grid md:grid-cols-12 gap-3 pb-2 border-b-2 border-slate-200">
+              <div className="col-span-5 font-semibold text-slate-700 text-sm">
                 Despesa
               </div>
-              <div className="col-span-2 font-semibold text-slate-700 text-sm text-center">
+              <div className="col-span-3 font-semibold text-slate-700 text-sm text-center">
                 Dia Vencimento
               </div>
               <div className="col-span-3 font-semibold text-slate-700 text-sm text-center">
@@ -295,8 +295,12 @@ export default function RecurringExpenses() {
 
             {/* Lista de despesas existentes */}
             {recurringExpenses.map((expense) => (
-              <div key={expense.id} className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-slate-50 rounded-lg transition-colors">
-                <div className="col-span-6">
+              <div key={expense.id} className="bg-slate-50 p-3 rounded-lg space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 md:items-center hover:bg-slate-100 transition-colors">
+                {/* Nome da despesa - full width em mobile */}
+                <div className="md:col-span-5">
+                  <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
+                    Despesa:
+                  </label>
                   <Input
                     value={getDisplayName(expense)}
                     onChange={(e) => handleNameChange(expense.id, e.target.value)}
@@ -306,34 +310,42 @@ export default function RecurringExpenses() {
                         handleNameBlur(expense.id);
                       }
                     }}
-                    className="border-slate-200 hover:border-blue-400 focus:border-blue-500 transition-colors"
+                    className="border-slate-200 hover:border-blue-400 focus:border-blue-500 transition-colors w-full"
                   />
                 </div>
                 
-                <div className="col-span-2">
+                {/* Dia Vencimento */}
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
+                    Dia de Vencimento:
+                  </label>
                   <Select
                     value={expense.due_day.toString()}
                     onValueChange={(value) => handleUpdateExpense(expense.id, 'due_day', value)}
                   >
-                    <SelectTrigger className="border-slate-200 hover:border-blue-400">
+                    <SelectTrigger className="border-slate-200 hover:border-blue-400 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
                       {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                         <SelectItem key={day} value={day.toString()}>
-                          {day}
+                          Dia {day}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="col-span-3">
+                {/* Lembrete */}
+                <div className="md:col-span-3">
+                  <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
+                    Lembrete:
+                  </label>
                   <Select
                     value={expense.reminder_days_before.toString()}
                     onValueChange={(value) => handleUpdateExpense(expense.id, 'reminder_days_before', value)}
                   >
-                    <SelectTrigger className="border-slate-200 hover:border-blue-400">
+                    <SelectTrigger className="border-slate-200 hover:border-blue-400 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -346,7 +358,8 @@ export default function RecurringExpenses() {
                   </Select>
                 </div>
 
-                <div className="col-span-1 flex justify-center">
+                {/* Botão deletar */}
+                <div className="md:col-span-1 flex justify-end md:justify-center">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -360,41 +373,53 @@ export default function RecurringExpenses() {
             ))}
 
             {/* Linha para adicionar nova despesa */}
-            <div className="grid grid-cols-12 gap-3 items-center pt-3 border-t-2 border-dashed border-slate-200">
-              <div className="col-span-6">
+            <div className="pt-3 border-t-2 border-dashed border-slate-200 bg-blue-50 p-3 rounded-lg space-y-3 md:space-y-0 md:grid md:grid-cols-12 md:gap-3 md:items-center">
+              {/* Nome da despesa */}
+              <div className="md:col-span-5">
+                <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
+                  Nova Despesa:
+                </label>
                 <Input
                   placeholder="Nome da despesa..."
                   value={newExpense.name}
                   onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
                   onKeyPress={(e) => e.key === 'Enter' && handleAddExpense()}
-                  className="border-blue-200 focus:border-blue-500"
+                  className="border-blue-200 focus:border-blue-500 w-full"
                 />
               </div>
               
-              <div className="col-span-2">
+              {/* Dia vencimento */}
+              <div className="md:col-span-3">
+                <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
+                  Dia de Vencimento:
+                </label>
                 <Select
                   value={newExpense.due_day}
                   onValueChange={(value) => setNewExpense({ ...newExpense, due_day: value })}
                 >
-                  <SelectTrigger className="border-blue-200">
+                  <SelectTrigger className="border-blue-200 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                       <SelectItem key={day} value={day.toString()}>
-                        {day}
+                        Dia {day}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="col-span-3">
+              {/* Lembrete */}
+              <div className="md:col-span-3">
+                <label className="block text-xs font-medium text-slate-600 mb-1 md:hidden">
+                  Lembrete:
+                </label>
                 <Select
                   value={newExpense.reminder_days_before}
                   onValueChange={(value) => setNewExpense({ ...newExpense, reminder_days_before: value })}
                 >
-                  <SelectTrigger className="border-blue-200">
+                  <SelectTrigger className="border-blue-200 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -407,14 +432,15 @@ export default function RecurringExpenses() {
                 </Select>
               </div>
 
-              <div className="col-span-1 flex justify-center">
+              {/* Botão adicionar */}
+              <div className="md:col-span-1 flex justify-center">
                 <Button
                   onClick={handleAddExpense}
                   disabled={!newExpense.name.trim() || createMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  size="icon"
+                  className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 md:mr-0 mr-2" />
+                  <span className="md:hidden">Adicionar</span>
                 </Button>
               </div>
             </div>
