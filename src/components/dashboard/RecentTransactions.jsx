@@ -8,6 +8,14 @@ import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
+// Função para formatar valor com ponto para milhares e vírgula para decimal
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+};
+
 // Função para abreviar e formatar descrição
 const formatDescription = (description, maxWords = 4) => {
   if (!description) return '';
@@ -112,7 +120,7 @@ export default function RecentTransactions({ transactions }) {
                 <p className={`font-bold ${
                   transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                 }`}>
-                  {transaction.type === 'income' ? '+' : '-'} R$ {Math.abs(transaction.amount).toFixed(2)}
+                  {transaction.type === 'income' ? '+' : '-'} R$ {formatCurrency(Math.abs(transaction.amount))}
                 </p>
               </div>
             </div>
