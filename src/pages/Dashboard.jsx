@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -125,7 +126,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-4 md:p-6 space-y-4">
       <AccountBalance
         balance={totalBalance}
         selectedAccount={selectedAccount}
@@ -136,7 +137,7 @@ export default function Dashboard() {
         transactions={transactions}
       />
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview" className="gap-2">
             <Calendar className="w-4 h-4" />
@@ -148,9 +149,9 @@ export default function Dashboard() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <Calendar className="w-5 h-5" />
               Resumo do Mês
             </h2>
@@ -208,10 +209,10 @@ export default function Dashboard() {
           <RecentTransactions transactions={transactions} />
         </TabsContent>
 
-        <TabsContent value="analysis" className="space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-6 h-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-slate-900">Análise Avançada</h2>
+        <TabsContent value="analysis" className="space-y-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
+            <h2 className="text-xl font-bold text-slate-900">Análise Avançada</h2>
           </div>
           
           {transactions.length === 0 ? (
