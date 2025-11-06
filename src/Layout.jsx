@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -39,6 +40,11 @@ const navigationItems = [
     title: "Transações",
     url: createPageUrl("Transactions"),
     icon: Receipt,
+  },
+  {
+    title: "Gerenciar Contas",
+    url: createPageUrl("ManageBankAccounts"),
+    icon: Building2,
   },
   {
     title: "Despesas Recorrentes",
