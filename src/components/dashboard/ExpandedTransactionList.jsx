@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
@@ -57,7 +58,7 @@ const formatDescription = (description, maxWords = 3) => {
   return toTitleCase(abbreviated);
 };
 
-// Função para formatar valores com ponto para milhares
+// Função para formatar valores com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: 2,
