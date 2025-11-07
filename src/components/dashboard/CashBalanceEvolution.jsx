@@ -75,28 +75,6 @@ const CustomDot = (props) => {
   );
 };
 
-const CustomLabel = (props) => {
-  const { x, y, value, index, data } = props;
-  const item = data[index];
-  
-  if (item.variation === null) return null;
-  
-  return (
-    <g>
-      <text
-        x={x}
-        y={y - 15}
-        fill={item.variation >= 0 ? '#10b981' : '#ef4444'}
-        fontSize="9"
-        fontWeight="600"
-        textAnchor="middle"
-      >
-        {item.variation >= 0 ? '+' : ''}{item.variation.toFixed(0)}%
-      </text>
-    </g>
-  );
-};
-
 export default function CashBalanceEvolution({ transactions }) {
   const chartData = useMemo(() => {
     const now = new Date();
@@ -187,7 +165,7 @@ export default function CashBalanceEvolution({ transactions }) {
         </div>
 
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={chartData} margin={{ top: 25, right: 20, bottom: 5, left: 20 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis 
               dataKey="month" 
@@ -215,7 +193,6 @@ export default function CashBalanceEvolution({ transactions }) {
               strokeWidth={3}
               dot={<CustomDot />}
               activeDot={{ r: 8 }}
-              label={<CustomLabel data={chartData} />}
             />
           </LineChart>
         </ResponsiveContainer>
