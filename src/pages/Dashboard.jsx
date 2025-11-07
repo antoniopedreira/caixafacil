@@ -47,6 +47,7 @@ export default function Dashboard() {
       options.push({
         value: i.toString(),
         label: format(date, "MMMM 'de' yyyy", { locale: ptBR }),
+        shortLabel: format(date, "MMMM", { locale: ptBR }),
         date: date
       });
     }
@@ -86,6 +87,40 @@ export default function Dashboard() {
       return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
     }, 0);
   }, [transactions, selectedAccount]);
+
+  // Calcula saldo inicial do mês selecionado
+  const { initialBalance, finalBalance, selectedMonthName } = useMemo(() => {
+    const monthsBack = parseInt(selectedMonth);
+    const selectedDate = subMonths(new Date(), monthsBack);
+    const monthStart = startOfMonth(selectedDate);
+    
+    const filteredByAccount = selectedAccount === "all" 
+      ? transactions 
+      : transactions.filter(t => t.bank_account === selectedAccount);
+    
+    // Saldo inicial = todas as transações ANTES do início do mês
+    const initial = filteredByAccount
+      .filter(t => new Date(t.date) < monthStart)
+      .reduce((sum, t) => {
+        return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
+      }, 0);
+    
+    // Saldo final = todas as transações ATÉ o fim do mês
+    const monthEnd = endOfMonth(selectedDate);
+    const final = filteredByAccount
+      .filter(t => new Date(t.date) <= monthEnd)
+      .reduce((sum, t) => {
+        return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
+      }, 0);
+    
+    const monthName = format(selectedDate, "MMMM", { locale: ptBR });
+    
+    return {
+      initialBalance: initial,
+      finalBalance: final,
+      selectedMonthName: monthName.charAt(0).toUpperCase() + monthName.slice(1)
+    };
+  }, [transactions, selectedAccount, selectedMonth]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions
@@ -173,6 +208,9 @@ export default function Dashboard() {
             income={monthStats.income}
             expense={monthStats.expense}
             balance={monthStats.balance}
+            initialBalance={initialBalance}
+            finalBalance={finalBalance}
+            monthName={selectedMonthName}
             onClickIncome={() => handleToggleCard('income')}
             onClickExpense={() => handleToggleCard('expense')}
             expandedCard={expandedCard}
