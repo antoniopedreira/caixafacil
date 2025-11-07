@@ -19,6 +19,7 @@ import SpendingTrends from "../components/dashboard/SpendingTrends";
 import TopCategories from "../components/dashboard/TopCategories";
 import FinancialProjection from "../components/dashboard/FinancialProjection";
 import MonthlyAnalysisTable from "../components/dashboard/MonthlyAnalysisTable";
+import CashBalanceEvolution from "../components/dashboard/CashBalanceEvolution";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
@@ -240,6 +241,10 @@ export default function Dashboard() {
                 <strong>Comece agora!</strong> Importe um extrato bancário ou adicione transações manualmente para visualizar seus dados.
               </AlertDescription>
             </Alert>
+          )}
+
+          {transactions.length > 0 && (
+            <CashBalanceEvolution transactions={transactions} />
           )}
 
           <UpcomingExpenses recurringExpenses={recurringExpenses} />
