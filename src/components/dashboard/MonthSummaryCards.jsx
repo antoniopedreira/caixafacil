@@ -19,23 +19,23 @@ const formatCurrency = (value) => {
 const explanations = {
   initialBalance: {
     title: "Saldo Inicial",
-    description: "É o dinheiro que você tinha em caixa no primeiro dia do mês. Esse valor é a soma de todas as entradas menos todas as saídas dos meses anteriores."
+    description: "É o dinheiro que você tinha em caixa no primeiro dia do período. Esse valor é a soma de todas as entradas menos todas as saídas dos períodos anteriores."
   },
   income: {
-    title: "Entradas do Mês",
-    description: "Todo o dinheiro que ENTROU no seu caixa durante este mês. Inclui vendas, recebimentos de clientes, prestação de serviços, etc."
+    title: "Entradas do Período",
+    description: "Todo o dinheiro que ENTROU no seu caixa durante este período. Inclui vendas, recebimentos de clientes, prestação de serviços, etc."
   },
   expense: {
-    title: "Saídas do Mês",
-    description: "Todo o dinheiro que SAIU do seu caixa durante este mês. Inclui pagamentos a fornecedores, salários, aluguel, contas, impostos, etc."
+    title: "Saídas do Período",
+    description: "Todo o dinheiro que SAIU do seu caixa durante este período. Inclui pagamentos a fornecedores, salários, aluguel, contas, impostos, etc."
   },
   result: {
-    title: "Resultado do Mês",
-    description: "É quanto você ganhou ou perdeu durante o mês. Se for positivo, você teve lucro (entrou mais do que saiu). Se for negativo, você teve prejuízo (saiu mais do que entrou)."
+    title: "Resultado do Período",
+    description: "É quanto você ganhou ou perdeu durante o período. Se for positivo, você teve lucro (entrou mais do que saiu). Se for negativo, você teve prejuízo (saiu mais do que entrou)."
   },
   finalBalance: {
     title: "Saldo Final",
-    description: "É o dinheiro que você tem em caixa no último dia do mês. Calculado assim: Saldo Inicial + Resultado do Mês = Saldo Final. É com esse valor que você começa o próximo mês."
+    description: "É o dinheiro que você tem em caixa no último dia do período. Calculado assim: Saldo Inicial + Resultado do Período = Saldo Final."
   }
 };
 
@@ -77,7 +77,7 @@ export default function MonthSummaryCards({
   balance, 
   initialBalance,
   finalBalance,
-  monthName,
+  periodLabel,
   onClickIncome, 
   onClickExpense, 
   expandedCard, 
@@ -86,15 +86,18 @@ export default function MonthSummaryCards({
   return (
     <Card className="border-0 shadow-md bg-white">
       <div className="p-4">
-        <h3 className="text-base font-semibold text-slate-900 mb-3">Fluxo de Caixa - {monthName}</h3>
+        <h3 className="text-base font-semibold text-slate-900 mb-3">Fluxo de Caixa</h3>
         
         <div className="space-y-2">
           {/* Saldo Inicial */}
           <div className="flex items-center justify-between p-3 bg-slate-100 rounded-lg">
-            <span className="text-slate-700 font-medium text-sm">(=) Saldo inicial - {monthName}</span>
+            <div>
+              <span className="text-slate-700 font-medium text-sm">(=) Saldo inicial</span>
+              <div className="text-xs text-slate-500 mt-0.5">({periodLabel})</div>
+            </div>
             <div className="flex items-center gap-1">
               <span className={`text-lg font-bold whitespace-nowrap ${
-                initialBalance >= 0 ? 'text-slate-900' : 'text-rose-600'
+                initialBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'
               }`}>
                 {initialBalance >= 0 ? '' : '-'} R$ {formatCurrency(Math.abs(initialBalance))}
               </span>
@@ -112,7 +115,10 @@ export default function MonthSummaryCards({
               }`}
               onClick={onClickIncome}
             >
-              <span className="text-slate-700 font-medium text-sm">(+) Entradas</span>
+              <div>
+                <span className="text-slate-700 font-medium text-sm">(+) Entradas</span>
+                <div className="text-xs text-slate-500 mt-0.5">({periodLabel})</div>
+              </div>
               <div className="flex items-center gap-1">
                 <span className="text-lg font-bold text-emerald-600 whitespace-nowrap">
                   R$ {formatCurrency(income)}
@@ -139,7 +145,10 @@ export default function MonthSummaryCards({
               }`}
               onClick={onClickExpense}
             >
-              <span className="text-slate-700 font-medium text-sm">(-) Saídas</span>
+              <div>
+                <span className="text-slate-700 font-medium text-sm">(-) Saídas</span>
+                <div className="text-xs text-slate-500 mt-0.5">({periodLabel})</div>
+              </div>
               <div className="flex items-center gap-1">
                 <span className="text-lg font-bold text-rose-600 whitespace-nowrap">
                   R$ {formatCurrency(expense)}
@@ -156,10 +165,13 @@ export default function MonthSummaryCards({
             {expandedCard === 'expense' && children?.expense}
           </div>
 
-          {/* Resultado do Mês */}
+          {/* Resultado do Período */}
           <div className="border-t pt-2 mt-2">
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-              <span className="text-slate-900 font-semibold text-sm">(+) Resultado - {monthName}</span>
+              <div>
+                <span className="text-slate-900 font-semibold text-sm">(=) Resultado</span>
+                <div className="text-xs text-slate-500 mt-0.5">({periodLabel})</div>
+              </div>
               <div className="flex items-center gap-1">
                 <span className={`text-lg font-bold whitespace-nowrap ${
                   balance >= 0 ? 'text-emerald-600' : 'text-rose-600'
@@ -173,7 +185,10 @@ export default function MonthSummaryCards({
 
           {/* Saldo Final */}
           <div className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg border-2 border-slate-200">
-            <span className="text-slate-900 font-bold text-sm whitespace-nowrap">(=) Saldo final - {monthName}</span>
+            <div>
+              <span className="text-slate-900 font-bold text-sm whitespace-nowrap">(=) Saldo final</span>
+              <div className="text-xs text-slate-500 mt-0.5">({periodLabel})</div>
+            </div>
             <div className="flex items-center gap-1">
               <span className={`text-xl font-bold whitespace-nowrap ${
                 finalBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'

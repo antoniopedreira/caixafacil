@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -7,8 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Calendar, TrendingUp, BarChart3 } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 import AccountBalance from "../components/dashboard/AccountBalance";
 import MonthSummaryCards from "../components/dashboard/MonthSummaryCards";
@@ -26,6 +28,12 @@ export default function Dashboard() {
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [showBalance, setShowBalance] = useState(true);
   const [expandedCard, setExpandedCard] = useState(null);
+  const [customPeriod, setCustomPeriod] = useState(null);
+  const [tempCustomPeriod, setTempCustomPeriod] = useState({
+    startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd')
+  });
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
 
   const { data: transactions, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions'],
@@ -52,6 +60,12 @@ export default function Dashboard() {
         date: date
       });
     }
+    options.push({
+      value: 'custom',
+      label: 'Personalizar período...',
+      shortLabel: 'Personalizado',
+      date: null
+    });
     return options;
   }, []);
 
@@ -65,19 +79,32 @@ export default function Dashboard() {
     return Array.from(accountSet);
   }, [transactions]);
 
-  const filteredTransactions = useMemo(() => {
-    const monthsBack = parseInt(selectedMonth);
-    const selectedDate = subMonths(new Date(), monthsBack);
-    const monthStart = startOfMonth(selectedDate);
-    const monthEnd = endOfMonth(selectedDate);
+  const { filteredTransactions, periodStart, periodEnd } = useMemo(() => {
+    let start, end;
 
-    return transactions.filter(t => {
+    if (customPeriod) {
+      start = startOfDay(new Date(customPeriod.startDate));
+      end = endOfDay(new Date(customPeriod.endDate));
+    } else {
+      const monthsBack = parseInt(selectedMonth);
+      const selectedDate = subMonths(new Date(), monthsBack);
+      start = startOfMonth(selectedDate);
+      end = endOfMonth(selectedDate);
+    }
+
+    const filtered = transactions.filter(t => {
       const date = new Date(t.date);
-      const dateMatch = date >= monthStart && date <= monthEnd;
+      const dateMatch = date >= start && date <= end;
       const accountMatch = selectedAccount === "all" || t.bank_account === selectedAccount;
       return dateMatch && accountMatch;
     });
-  }, [transactions, selectedMonth, selectedAccount]);
+
+    return {
+      filteredTransactions: filtered,
+      periodStart: start,
+      periodEnd: end
+    };
+  }, [transactions, selectedMonth, selectedAccount, customPeriod]);
 
   const totalBalance = useMemo(() => {
     const filteredByAccount = selectedAccount === "all" 
@@ -89,39 +116,38 @@ export default function Dashboard() {
     }, 0);
   }, [transactions, selectedAccount]);
 
-  // Calcula saldo inicial do mês selecionado
-  const { initialBalance, finalBalance, selectedMonthName } = useMemo(() => {
-    const monthsBack = parseInt(selectedMonth);
-    const selectedDate = subMonths(new Date(), monthsBack);
-    const monthStart = startOfMonth(selectedDate);
-    
+  const { initialBalance, finalBalance, periodLabel } = useMemo(() => {
     const filteredByAccount = selectedAccount === "all" 
       ? transactions 
       : transactions.filter(t => t.bank_account === selectedAccount);
     
-    // Saldo inicial = todas as transações ANTES do início do mês
     const initial = filteredByAccount
-      .filter(t => new Date(t.date) < monthStart)
+      .filter(t => new Date(t.date) < periodStart)
       .reduce((sum, t) => {
         return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
       }, 0);
     
-    // Saldo final = todas as transações ATÉ o fim do mês
-    const monthEnd = endOfMonth(selectedDate);
     const final = filteredByAccount
-      .filter(t => new Date(t.date) <= monthEnd)
+      .filter(t => new Date(t.date) <= periodEnd)
       .reduce((sum, t) => {
         return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
       }, 0);
     
-    const monthName = format(selectedDate, "MMMM", { locale: ptBR });
+    let label;
+    if (customPeriod) {
+      const startFormatted = format(periodStart, "MMM/yy", { locale: ptBR });
+      const endFormatted = format(periodEnd, "MMM/yy", { locale: ptBR });
+      label = startFormatted === endFormatted ? startFormatted : `${startFormatted} a ${endFormatted}`;
+    } else {
+      label = format(periodStart, "MMM/yy", { locale: ptBR });
+    }
     
     return {
       initialBalance: initial,
       finalBalance: final,
-      selectedMonthName: monthName.charAt(0).toUpperCase() + monthName.slice(1)
+      periodLabel: label
     };
-  }, [transactions, selectedAccount, selectedMonth]);
+  }, [transactions, selectedAccount, periodStart, periodEnd, customPeriod]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions
@@ -141,6 +167,21 @@ export default function Dashboard() {
 
   const handleToggleCard = (type) => {
     setExpandedCard(expandedCard === type ? null : type);
+  };
+
+  const handleMonthChange = (value) => {
+    if (value === 'custom') {
+      setCustomDialogOpen(true);
+    } else {
+      setCustomPeriod(null);
+      setSelectedMonth(value);
+    }
+  };
+
+  const handleApplyCustomPeriod = () => {
+    setCustomPeriod(tempCustomPeriod);
+    setSelectedMonth('custom');
+    setCustomDialogOpen(false);
   };
 
   const incomeTransactions = useMemo(() => {
@@ -189,9 +230,9 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              Resumo do Mês
+              Resumo do Período
             </h2>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <Select value={selectedMonth} onValueChange={handleMonthChange}>
               <SelectTrigger className="w-56 h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -211,7 +252,7 @@ export default function Dashboard() {
             balance={monthStats.balance}
             initialBalance={initialBalance}
             finalBalance={finalBalance}
-            monthName={selectedMonthName}
+            periodLabel={periodLabel}
             onClickIncome={() => handleToggleCard('income')}
             onClickExpense={() => handleToggleCard('expense')}
             expandedCard={expandedCard}
@@ -270,6 +311,36 @@ export default function Dashboard() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Dialog para período personalizado */}
+      <Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Período Personalizado</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Data Inicial</label>
+              <Input
+                type="date"
+                value={tempCustomPeriod.startDate}
+                onChange={(e) => setTempCustomPeriod({ ...tempCustomPeriod, startDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Data Final</label>
+              <Input
+                type="date"
+                value={tempCustomPeriod.endDate}
+                onChange={(e) => setTempCustomPeriod({ ...tempCustomPeriod, endDate: e.target.value })}
+              />
+            </div>
+            <Button onClick={handleApplyCustomPeriod} className="w-full">
+              Aplicar Período
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
