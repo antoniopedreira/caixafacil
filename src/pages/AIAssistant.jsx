@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,17 +19,32 @@ import { ptBR } from "date-fns/locale";
 
 import ChatMessage from "../components/ai/ChatMessage";
 import SuggestedQuestions from "../components/ai/SuggestedQuestions";
+import BusinessContextDialog from "../components/ai/BusinessContextDialog";
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showContextDialog, setShowContextDialog] = useState(false);
   const messagesEndRef = useRef(null);
+  const queryClient = useQueryClient();
+
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: () => base44.auth.me(),
+  });
 
   const { data: transactions } = useQuery({
     queryKey: ['transactions'],
     queryFn: () => base44.entities.Transaction.list('-date'),
     initialData: [],
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: (data) => base44.auth.updateMe(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['current-user'] });
+    },
   });
 
   const scrollToBottom = () => {
@@ -41,18 +55,66 @@ export default function AIAssistant() {
     scrollToBottom();
   }, [messages]);
 
+  // Verifica se precisa coletar contexto do negócio
+  useEffect(() => {
+    if (user && !user.business_context_collected && messages.length === 0) {
+      // Mostra mensagem automática pedindo contexto
+      setTimeout(() => {
+        const welcomeMessage = {
+          text: `Olá! 👋 Sou seu assistente financeiro.\n\nPara te ajudar melhor, preciso conhecer seu negócio. São só 4 perguntas rápidas!\n\n**Vamos começar?** Clique no botão abaixo.`,
+          isUser: false,
+          showContextButton: true
+        };
+        setMessages([welcomeMessage]);
+      }, 500);
+    }
+  }, [user, messages.length]);
+
+  const handleContextSaved = async (contextData) => {
+    await updateUserMutation.mutateAsync({
+      ...contextData,
+      business_context_collected: true
+    });
+    
+    setShowContextDialog(false);
+    
+    // Mensagem de confirmação
+    const confirmMessage = {
+      text: `Perfeito! Agora posso te ajudar de forma muito mais direcionada. 🎯\n\n**O que você quer saber sobre seu negócio?**`,
+      isUser: false
+    };
+    setMessages(prev => [...prev.filter(m => !m.showContextButton), confirmMessage]);
+  };
+
+  // Mapeia segmentos para nomes legíveis
+  const getSegmentName = (segment) => {
+    const segments = {
+      comercio_varejo: "comércio/varejo",
+      restaurante_bar: "restaurante/bar",
+      salao_beleza: "salão de beleza",
+      consultoria_servicos: "consultoria/serviços",
+      construcao_reformas: "construção/reformas",
+      transporte_logistica: "transporte/logística",
+      saude_clinica: "saúde/clínica",
+      educacao_cursos: "educação/cursos",
+      tecnologia_software: "tecnologia/software",
+      industria_fabricacao: "indústria/fabricação",
+      agronegocio: "agronegócio",
+      outros: "outros"
+    };
+    return segments[segment] || segment;
+  };
+
   // Prepara o contexto financeiro do usuário
   const prepareFinancialContext = () => {
     const now = new Date();
     const lastMonth = subMonths(now, 1);
     const last3Months = subMonths(now, 3);
     
-    // Transações do mês atual
     const currentMonthTransactions = transactions.filter(t => 
       new Date(t.date) >= new Date(now.getFullYear(), now.getMonth(), 1)
     );
     
-    // Últimos 3 meses
     const recent3MonthsTransactions = transactions.filter(t => 
       new Date(t.date) >= last3Months
     );
@@ -65,7 +127,6 @@ export default function AIAssistant() {
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
     
-    // Gastos por categoria
     const expensesByCategory = {};
     currentMonthTransactions
       .filter(t => t.type === 'expense')
@@ -73,7 +134,6 @@ export default function AIAssistant() {
         expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + Math.abs(t.amount);
       });
     
-    // Receitas por categoria
     const incomeByCategory = {};
     currentMonthTransactions
       .filter(t => t.type === 'income')
@@ -81,7 +141,6 @@ export default function AIAssistant() {
         incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
       });
     
-    // Tendências dos últimos 3 meses
     const monthlyTrends = [];
     for (let i = 2; i >= 0; i--) {
       const monthDate = subMonths(now, i);
@@ -135,7 +194,12 @@ export default function AIAssistant() {
     
     if (!messageText) return;
 
-    // Adiciona mensagem do usuário
+    // Se não tem contexto, pede para cadastrar
+    if (!user?.business_context_collected) {
+      setShowContextDialog(true);
+      return;
+    }
+
     const userMessage = { text: messageText, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setInputValue("");
@@ -144,78 +208,85 @@ export default function AIAssistant() {
     try {
       const financialContext = prepareFinancialContext();
       
-      const prompt = `Você é um consultor especializado em micro e pequenas empresas brasileiras, com expertise em:
-- Gestão financeira e fluxo de caixa
-- Redução de custos e otimização de despesas
-- Planejamento e estratégia de negócios
-- Precificação e rentabilidade
-- Crescimento sustentável
+      // Monta contexto do negócio
+      const businessContext = user.business_segment ? `
+📋 **PERFIL DO NEGÓCIO:**
+- Segmento: ${getSegmentName(user.business_segment)}
+- Nome: ${user.business_name || 'Não informado'}
+- Funcionários: ${user.employee_count ? user.employee_count.replace(/_/g, ' ') : 'Não informado'}
+- Faturamento mensal: ${user.monthly_revenue_range ? user.monthly_revenue_range.replace(/_/g, ' ').replace('k', ' mil') : 'Não informado'}
+- Desafio principal: ${user.main_challenge || 'Não informado'}
+` : '';
 
-**CONTEXTO FINANCEIRO DO NEGÓCIO:**
+      const prompt = `Você é o Marcos, um empresário experiente de ${getSegmentName(user.business_segment || 'comércio')} que mentora outros empresários. Você fala de forma direta, sem enrolação, como um amigo que quer ajudar.
 
-📊 **Resumo do Mês Atual:**
-- Receitas: R$ ${financialContext.summary.currentMonthIncome.toFixed(2)}
-- Despesas: R$ ${financialContext.summary.currentMonthExpense.toFixed(2)}
-- Saldo: R$ ${financialContext.summary.currentMonthBalance.toFixed(2)}
-- Total de transações: ${financialContext.summary.numberOfTransactionsThisMonth}
+${businessContext}
 
-💰 **Despesas por Categoria (Mês Atual):**
+📊 **DADOS FINANCEIROS (MÊS ATUAL):**
+- Receitas: R$ ${financialContext.summary.currentMonthIncome.toLocaleString('pt-BR')}
+- Despesas: R$ ${financialContext.summary.currentMonthExpense.toLocaleString('pt-BR')}
+- Saldo: R$ ${financialContext.summary.currentMonthBalance.toLocaleString('pt-BR')}
+
+💰 **TOP 3 MAIORES DESPESAS:**
 ${Object.entries(financialContext.expensesByCategory)
   .sort((a, b) => b[1] - a[1])
-  .map(([cat, amount]) => `- ${cat.replace(/_/g, ' ')}: R$ ${amount.toFixed(2)} (${(financialContext.summary.currentMonthExpense > 0 ? ((amount/financialContext.summary.currentMonthExpense)*100) : 0).toFixed(1)}%)`)
+  .slice(0, 3)
+  .map(([cat, amount], i) => `${i+1}. ${cat.replace(/_/g, ' ')}: R$ ${amount.toLocaleString('pt-BR')}`)
   .join('\n')}
 
-💵 **Receitas por Categoria (Mês Atual):**
-${Object.entries(financialContext.incomeByCategory)
-  .sort((a, b) => b[1] - a[1])
-  .map(([cat, amount]) => `- ${cat.replace(/_/g, ' ')}: R$ ${amount.toFixed(2)}`)
-  .join('\n')}
-
-📈 **Tendências dos Últimos 3 Meses:**
+📈 **TENDÊNCIA (3 MESES):**
 ${financialContext.monthlyTrends.map(m => 
-  `- ${m.month}: Receitas R$ ${m.income.toFixed(2)}, Despesas R$ ${m.expense.toFixed(2)}, Saldo R$ ${m.balance.toFixed(2)}`
-).join('\n')}
-
-📝 **Transações Recentes:**
-${financialContext.recentTransactions.slice(0, 10).map(t => 
-  `- ${t.date}: ${t.description} | ${t.type === 'income' ? 'Receita' : 'Despesa'} | R$ ${Math.abs(t.amount).toFixed(2)}`
+  `- ${m.month}: Saldo R$ ${m.balance.toLocaleString('pt-BR')}`
 ).join('\n')}
 
 ---
 
-**SUA MISSÃO:**
-Analise os dados financeiros acima e responda à pergunta do empresário de forma:
+**REGRAS PARA SUA RESPOSTA:**
 
-1. **PRÁTICA**: Dê ações concretas que podem ser implementadas imediatamente
-2. **CLARA**: Use linguagem simples, sem jargões técnicos complexos
-3. **ESPECÍFICA**: Mencione valores, percentuais e categorias exatos dos dados
-4. **MOTIVADORA**: Seja positivo e encorajador, mas realista
-5. **COMPLETA**: Aborde tanto aspectos financeiros quanto de gestão do negócio
+1. **SEJA DIRETO**: Vá direto ao ponto, sem textão
+2. **USE TÓPICOS**: Organize tudo em bullet points
+3. **NÚMEROS REAIS**: Sempre cite valores específicos dos dados acima
+4. **AÇÕES PRÁTICAS**: Dê no máximo 3 ações que ele pode fazer HOJE
+5. **TOM PRÓXIMO**: Fale como se fosse um amigo dando conselho no bar
+6. **ESPECÍFICO PRO SEGMENTO**: Adapte exemplos pro segmento dele (${getSegmentName(user.business_segment || 'comércio')})
 
-**ÁREAS DE FOCO:**
-- Se perguntarem sobre custos: identifique os maiores gastos e sugira 2-3 formas práticas de redução
-- Se perguntarem sobre crescimento: analise as receitas e sugira estratégias realistas baseadas no histórico
-- Se perguntarem sobre saúde financeira: avalie saldo, margem de lucro e fluxo de caixa
-- Se perguntarem conselhos gerais: seja proativo e identifique oportunidades nos dados
+**FORMATO OBRIGATÓRIO:**
 
-**FORMATO DA RESPOSTA:**
-- Use emojis para tornar mais visual (📊💡✅⚠️)
-- Organize em tópicos curtos e escaneáveis
-- Sempre que possível, forneça 2-3 ações concretas
-- Termine com uma frase motivadora
+🎯 **RESPOSTA DIRETA**
+[Responda em 1 linha]
+
+📊 **O QUE VI NOS SEUS DADOS**
+• [Insight 1 com número]
+• [Insight 2 com número]
+
+💡 **FAÇA HOJE**
+1. [Ação específica com valor estimado]
+2. [Ação específica com valor estimado]
+3. [Ação específica com valor estimado]
+
+❓ **[Pergunta para aprofundar o tema]**
+
+---
+
+**EXEMPLOS DE BOM E RUIM:**
+
+❌ RUIM: "Você deve considerar a otimização dos seus custos operacionais"
+✅ BOM: "Seus R$ 8.500 em fornecedores estão altos. Ligue pra 3 deles hoje e peça 10% de desconto - economiza R$ 850/mês"
+
+❌ RUIM: "Analise suas receitas"
+✅ BOM: "Suas vendas caíram 15% vs mês passado (de R$ 45k pra R$ 38k). Faça uma promoção esta semana pra recuperar"
 
 **Pergunta do empresário:** ${messageText}
 
-**Sua resposta como consultor:**`;
+**Sua resposta como Marcos (empresário experiente):**`;
 
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: prompt,
         add_context_from_internet: false
       });
 
-      // Adiciona resposta da IA
       const aiMessage = { 
-        text: result || "Desculpe, não consegui processar sua pergunta. Tente novamente.", 
+        text: result || "Desculpe, não consegui processar sua pergunta. Tenta reformular?", 
         isUser: false 
       };
       
@@ -224,7 +295,7 @@ Analise os dados financeiros acima e responda à pergunta do empresário de form
       console.error("Erro ao processar mensagem:", error);
       
       const errorMessage = { 
-        text: "Desculpe, ocorreu um erro ao processar sua pergunta. Por favor, tente novamente.", 
+        text: "Ops, deu um problema aqui. Tenta de novo?", 
         isUser: false 
       };
       
@@ -254,23 +325,34 @@ Analise os dados financeiros acima e responda à pergunta do empresário de form
               Assistente Financeiro IA
             </h1>
             <p className="text-slate-600">
-              Consultor financeiro inteligente para sua empresa
+              {user?.business_name ? `Consultoria para ${user.business_name}` : 'Seu consultor financeiro pessoal'}
             </p>
           </div>
         </div>
       </div>
 
       {/* Benefícios - ultra compactos */}
-      {messages.length === 0 && (
+      {messages.length === 0 && !user?.business_context_collected && (
+        <div className="mb-4">
+          <Alert className="border-blue-200 bg-blue-50">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-900 text-sm">
+              <strong>Primeira vez aqui?</strong> Vou te fazer 4 perguntas rápidas sobre seu negócio para dar conselhos ultra direcionados! 🎯
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {messages.length === 0 && user?.business_context_collected && (
         <div className="mb-4">
           <div className="flex items-center justify-center gap-6 mb-3 p-2 bg-slate-50 rounded-lg">
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-purple-600" />
-              <span className="text-xs font-medium text-slate-700">Insights Personalizados</span>
+              <span className="text-xs font-medium text-slate-700">Respostas Diretas</span>
             </div>
             <div className="flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-medium text-slate-700">Recomendações Práticas</span>
+              <span className="text-xs font-medium text-slate-700">Ações Práticas</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Shield className="w-4 h-4 text-green-600" />
@@ -282,7 +364,7 @@ Analise os dados financeiros acima e responda à pergunta do empresário de form
             <Alert className="border-orange-200 bg-orange-50">
               <AlertCircle className="h-4 w-4 text-orange-600" />
               <AlertDescription className="text-orange-900 text-sm">
-                <strong>Dica:</strong> Para obter conselhos mais precisos, adicione algumas transações primeiro.
+                <strong>Dica:</strong> Adicione transações para obter conselhos mais precisos com base nos seus números reais.
               </AlertDescription>
             </Alert>
           )}
@@ -292,18 +374,30 @@ Analise os dados financeiros acima e responda à pergunta do empresário de form
       {/* Área de mensagens */}
       <Card className="flex-1 flex flex-col border-0 shadow-lg overflow-hidden">
         <CardContent className="flex-1 overflow-y-auto p-6">
-          {messages.length === 0 ? (
+          {messages.length === 0 && user?.business_context_collected ? (
             <div className="h-full flex flex-col justify-center">
               <SuggestedQuestions onSelectQuestion={handleSendMessage} />
             </div>
           ) : (
             <div className="space-y-4">
               {messages.map((message, index) => (
-                <ChatMessage
-                  key={index}
-                  message={message.text}
-                  isUser={message.isUser}
-                />
+                <div key={index}>
+                  <ChatMessage
+                    message={message.text}
+                    isUser={message.isUser}
+                  />
+                  {message.showContextButton && (
+                    <div className="flex justify-center mt-4">
+                      <Button
+                        onClick={() => setShowContextDialog(true)}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Vamos lá! Cadastrar meu negócio
+                      </Button>
+                    </div>
+                  )}
+                </div>
               ))}
               
               {isLoading && (
@@ -334,7 +428,7 @@ Analise os dados financeiros acima e responda à pergunta do empresário de form
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Pergunte algo sobre suas finanças... (Ex: Como posso reduzir custos?)"
+              placeholder="Ex: Como reduzo custos? Minhas vendas estão boas?"
               className="resize-none bg-white"
               rows={2}
               disabled={isLoading}
@@ -352,10 +446,18 @@ Analise os dados financeiros acima e responda à pergunta do empresário de form
             </Button>
           </div>
           <p className="text-xs text-slate-500 mt-2">
-            Pressione Enter para enviar • Shift + Enter para quebra de linha
+            Pressione Enter para enviar • Shift + Enter para nova linha
           </p>
         </div>
       </Card>
+
+      {/* Dialog de contexto do negócio */}
+      <BusinessContextDialog
+        open={showContextDialog}
+        onClose={() => setShowContextDialog(false)}
+        onSave={handleContextSaved}
+        user={user}
+      />
     </div>
   );
 }
