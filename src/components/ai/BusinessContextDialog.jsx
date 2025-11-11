@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,121 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Search, Check } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+const BUSINESS_SEGMENTS = [
+  { value: "acougue", label: "🥩 Açougue" },
+  { value: "academia_fitness", label: "💪 Academia/Fitness" },
+  { value: "advocacia", label: "⚖️ Advocacia" },
+  { value: "agencia_marketing", label: "📣 Agência de Marketing" },
+  { value: "agencia_turismo", label: "✈️ Agência de Turismo" },
+  { value: "agencia_viagens", label: "🧳 Agência de Viagens" },
+  { value: "agronegocio", label: "🌾 Agronegócio" },
+  { value: "autoescola", label: "🚗 Autoescola" },
+  { value: "auto_pecas", label: "🔧 Auto Peças" },
+  { value: "banco_financeira", label: "🏦 Banco/Financeira" },
+  { value: "bar_boteco", label: "🍺 Bar/Boteco" },
+  { value: "barbearia", label: "💈 Barbearia" },
+  { value: "bijuteria_acessorios", label: "💍 Bijuteria/Acessórios" },
+  { value: "buffet_eventos", label: "🎉 Buffet/Eventos" },
+  { value: "cafeteria", label: "☕ Cafeteria" },
+  { value: "casa_construcao", label: "🏠 Casa de Construção" },
+  { value: "clinica_medica", label: "🏥 Clínica Médica" },
+  { value: "clinica_odontologica", label: "🦷 Clínica Odontológica" },
+  { value: "clinica_veterinaria", label: "🐾 Clínica Veterinária" },
+  { value: "confeitaria_doces", label: "🧁 Confeitaria/Doces" },
+  { value: "construcao_civil", label: "🏗️ Construção Civil" },
+  { value: "consultoria_empresarial", label: "💼 Consultoria Empresarial" },
+  { value: "contabilidade", label: "📊 Contabilidade" },
+  { value: "coworking", label: "🖥️ Coworking" },
+  { value: "decoracao_interiores", label: "🛋️ Decoração/Interiores" },
+  { value: "delivery_marmita", label: "🍱 Delivery/Marmita" },
+  { value: "despachante", label: "📄 Despachante" },
+  { value: "distribuidora", label: "📦 Distribuidora" },
+  { value: "drogaria_farmacia", label: "💊 Drogaria/Farmácia" },
+  { value: "eletricista", label: "⚡ Eletricista" },
+  { value: "eletronica", label: "📱 Eletrônica" },
+  { value: "encanador_hidraulica", label: "🚰 Encanador/Hidráulica" },
+  { value: "engenharia", label: "👷 Engenharia" },
+  { value: "escola_curso", label: "📚 Escola/Curso" },
+  { value: "escritorio_advocacia", label: "⚖️ Escritório de Advocacia" },
+  { value: "estetica_beleza", label: "💅 Estética/Beleza" },
+  { value: "estudio_fotografia", label: "📷 Estúdio de Fotografia" },
+  { value: "estudio_tatuagem", label: "🎨 Estúdio de Tatuagem" },
+  { value: "eventos_producao", label: "🎭 Eventos/Produção" },
+  { value: "farmacia_manipulacao", label: "💊 Farmácia de Manipulação" },
+  { value: "fisioterapia", label: "🧘 Fisioterapia" },
+  { value: "floricultura", label: "🌸 Floricultura" },
+  { value: "food_truck", label: "🚚 Food Truck" },
+  { value: "fotografia", label: "📸 Fotografia" },
+  { value: "gesso_drywall", label: "🧱 Gesso/Drywall" },
+  { value: "grafica", label: "🖨️ Gráfica" },
+  { value: "hamburgueria", label: "🍔 Hamburgueria" },
+  { value: "hotel_pousada", label: "🏨 Hotel/Pousada" },
+  { value: "imobiliaria", label: "🏘️ Imobiliária" },
+  { value: "importacao_exportacao", label: "🌐 Importação/Exportação" },
+  { value: "industria", label: "🏭 Indústria" },
+  { value: "informatica", label: "💻 Informática" },
+  { value: "jardinagem_paisagismo", label: "🌳 Jardinagem/Paisagismo" },
+  { value: "joalheria", label: "💎 Joalheria" },
+  { value: "laboratorio_analises", label: "🔬 Laboratório de Análises" },
+  { value: "lanchonete", label: "🥪 Lanchonete" },
+  { value: "lavanderia", label: "🧺 Lavanderia" },
+  { value: "lava_jato", label: "🚿 Lava Jato" },
+  { value: "livraria", label: "📚 Livraria" },
+  { value: "loja_animais", label: "🐶 Loja de Animais" },
+  { value: "loja_calcados", label: "👞 Loja de Calçados" },
+  { value: "loja_informatica", label: "💻 Loja de Informática" },
+  { value: "loja_moveis", label: "🛏️ Loja de Móveis" },
+  { value: "loja_roupas", label: "👕 Loja de Roupas" },
+  { value: "loja_1_99", label: "🛍️ Loja 1,99" },
+  { value: "marcenaria", label: "🪵 Marcenaria" },
+  { value: "mecanica_auto", label: "🔧 Mecânica Auto" },
+  { value: "mercado_mini", label: "🛒 Mercado/Mini" },
+  { value: "moda_confeccao", label: "👗 Moda/Confecção" },
+  { value: "motel", label: "🏩 Motel" },
+  { value: "nutricionista", label: "🥗 Nutricionista" },
+  { value: "otica", label: "👓 Ótica" },
+  { value: "padaria", label: "🥖 Padaria" },
+  { value: "papelaria", label: "📝 Papelaria" },
+  { value: "pet_shop", label: "🐕 Pet Shop" },
+  { value: "pintura_predial", label: "🎨 Pintura Predial" },
+  { value: "pizzaria", label: "🍕 Pizzaria" },
+  { value: "pousada", label: "🏡 Pousada" },
+  { value: "psicologia", label: "🧠 Psicologia" },
+  { value: "relojoaria", label: "⌚ Relojoaria" },
+  { value: "restaurante", label: "🍽️ Restaurante" },
+  { value: "salao_beleza", label: "💇 Salão de Beleza" },
+  { value: "salao_festas", label: "🎊 Salão de Festas" },
+  { value: "sapataria", label: "👞 Sapataria" },
+  { value: "seguranca_eletronica", label: "🔒 Segurança Eletrônica" },
+  { value: "serralheria", label: "🔨 Serralheria" },
+  { value: "sorveteria", label: "🍦 Sorveteria" },
+  { value: "supermercado", label: "🏪 Supermercado" },
+  { value: "tabacaria", label: "🚬 Tabacaria" },
+  { value: "tapeçaria", label: "🛋️ Tapeçaria" },
+  { value: "taxi_transporte", label: "🚕 Taxi/Transporte" },
+  { value: "tecnologia_software", label: "💻 Tecnologia/Software" },
+  { value: "telefonia_celular", label: "📱 Telefonia/Celular" },
+  { value: "tinturaria", label: "👔 Tinturaria" },
+  { value: "torno_mecanico", label: "⚙️ Torno Mecânico" },
+  { value: "transporte_carga", label: "🚚 Transporte de Carga" },
+  { value: "vidracaria", label: "🪟 Vidraçaria" },
+  { value: "outros", label: "📦 Outros" },
+].sort((a, b) => a.label.localeCompare(b.label));
 
 export default function BusinessContextDialog({ open, onClose, onSave, user }) {
   const [formData, setFormData] = useState({
@@ -21,6 +135,13 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
     monthly_revenue_range: user?.monthly_revenue_range || '',
     main_challenge: user?.main_challenge || ''
   });
+
+  const [openCombobox, setOpenCombobox] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+
+  const selectedSegment = useMemo(() => {
+    return BUSINESS_SEGMENTS.find(s => s.value === formData.business_segment);
+  }, [formData.business_segment]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,29 +175,56 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
 
           <div className="space-y-2">
             <Label htmlFor="business_segment">2. Qual o ramo/segmento? *</Label>
-            <Select
-              value={formData.business_segment}
-              onValueChange={(value) => setFormData({ ...formData, business_segment: value })}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="comercio_varejo">🛒 Comércio/Varejo</SelectItem>
-                <SelectItem value="restaurante_bar">🍽️ Restaurante/Bar</SelectItem>
-                <SelectItem value="salao_beleza">💇 Salão de Beleza/Estética</SelectItem>
-                <SelectItem value="consultoria_servicos">💼 Consultoria/Serviços</SelectItem>
-                <SelectItem value="construcao_reformas">🏗️ Construção/Reformas</SelectItem>
-                <SelectItem value="transporte_logistica">🚚 Transporte/Logística</SelectItem>
-                <SelectItem value="saude_clinica">🏥 Saúde/Clínica</SelectItem>
-                <SelectItem value="educacao_cursos">📚 Educação/Cursos</SelectItem>
-                <SelectItem value="tecnologia_software">💻 Tecnologia/Software</SelectItem>
-                <SelectItem value="industria_fabricacao">🏭 Indústria/Fabricação</SelectItem>
-                <SelectItem value="agronegocio">🌾 Agronegócio</SelectItem>
-                <SelectItem value="outros">📦 Outros</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openCombobox}
+                  className="w-full justify-between"
+                >
+                  {selectedSegment ? selectedSegment.label : "Digite ou selecione..."}
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start">
+                <Command>
+                  <CommandInput 
+                    placeholder="Digite para buscar..." 
+                    value={searchValue}
+                    onValueChange={setSearchValue}
+                  />
+                  <CommandList>
+                    <CommandEmpty>Nenhum ramo encontrado.</CommandEmpty>
+                    <CommandGroup className="max-h-64 overflow-auto">
+                      {BUSINESS_SEGMENTS.map((segment) => (
+                        <CommandItem
+                          key={segment.value}
+                          value={segment.label}
+                          onSelect={() => {
+                            setFormData({ ...formData, business_segment: segment.value });
+                            setOpenCombobox(false);
+                            setSearchValue('');
+                          }}
+                        >
+                          <Check
+                            className={`mr-2 h-4 w-4 ${
+                              formData.business_segment === segment.value
+                                ? "opacity-100"
+                                : "opacity-0"
+                            }`}
+                          />
+                          {segment.label}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-slate-500">
+              Digite para filtrar ou role a lista para ver todas as opções
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
