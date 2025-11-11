@@ -85,7 +85,9 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
     const sortedGroups = Object.entries(groups)
       .map(([category, items]) => {
         const total = items.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        return { category, items, total };
+        // Ordena as transações dentro da categoria por valor decrescente
+        const sortedItems = [...items].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+        return { category, items: sortedItems, total };
       })
       .sort((a, b) => b.total - a.total);
 
