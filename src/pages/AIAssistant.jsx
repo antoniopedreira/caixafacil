@@ -23,7 +23,7 @@ export default function AIAssistant() {
   const messagesStartRef = useRef(null);
   const [showContextDialog, setShowContextDialog] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
-  const isFirstLoadRef = useRef(true); // Para controlar primeira carga
+  const isFirstLoadRef = useRef(true);
 
   const queryClient = useQueryClient();
 
@@ -65,7 +65,6 @@ export default function AIAssistant() {
     }
   }, [isLoading]);
 
-  // Só mostra os modais na primeira carga da página
   useEffect(() => {
     if (!user || !isFirstLoadRef.current) return;
     
@@ -508,51 +507,10 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
           </Alert>
         )}
 
+        {/* Área de Chat - MAIOR e DESTACADA */}
         <div className="flex-1 bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col border-4 border-purple-200">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-4">
-                <div className="relative">
-                  <FlavioAvatar avatarId={selectedAvatar} size="xxl" className="animate-pulse" />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-bold text-slate-900 mb-3">
-                    E aí! Sou {consultorName === 'Flávia' ? 'a' : 'o'} {consultorName} 👋
-                  </h2>
-                  <p className="text-slate-600 max-w-lg text-lg">
-                    {consultorName === 'Flávia' ? 'Sua consultora financeira pessoal' : 'Seu consultor financeiro pessoal'}. Bora analisar suas finanças, encontrar oportunidades e fazer planos práticos?
-                  </p>
-                </div>
-                
-                <div className="w-full max-w-3xl">
-                  <SuggestedQuestions onSelectQuestion={handleSendMessage} />
-                </div>
-              </div>
-            ) : (
-              <>
-                <div ref={messagesStartRef} />
-                {messages.map((message, index) => (
-                  <ChatMessage key={index} message={message} avatarId={selectedAvatar} />
-                ))}
-                {isLoading && (
-                  <div className="flex gap-3">
-                    <FlavioAvatar avatarId={selectedAvatar} size="sm" />
-                    <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4">
-                      <div className="flex gap-2 items-center">
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        <span className="text-xs text-slate-500 ml-2">{consultorName} está analisando...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </div>
-
-          <div className="border-t-4 border-purple-200 p-4 md:p-6 bg-gradient-to-r from-purple-50 to-blue-50">
+          {/* Área de Input PRIMEIRO - NO TOPO */}
+          <div className="border-b-4 border-purple-200 p-4 md:p-6 bg-gradient-to-r from-purple-50 to-blue-50 flex-shrink-0">
             {messages.length > 0 && (
               <div className="mb-4">
                 <Button
@@ -604,6 +562,50 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
             <p className="text-center text-xs text-slate-500 mt-3">
               ✨ <strong>Dica:</strong> Quanto mais detalhes você der, melhor será minha análise!
             </p>
+          </div>
+
+          {/* Histórico de Mensagens DEPOIS - ABAIXO DO INPUT */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-4">
+                <div className="relative">
+                  <FlavioAvatar avatarId={selectedAvatar} size="xxl" className="animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-slate-900 mb-3">
+                    E aí! Sou {consultorName === 'Flávia' ? 'a' : 'o'} {consultorName} 👋
+                  </h2>
+                  <p className="text-slate-600 max-w-lg text-lg mb-6">
+                    {consultorName === 'Flávia' ? 'Sua consultora financeira pessoal' : 'Seu consultor financeiro pessoal'}. Bora analisar suas finanças, encontrar oportunidades e fazer planos práticos?
+                  </p>
+                </div>
+                
+                <div className="w-full max-w-3xl">
+                  <SuggestedQuestions onSelectQuestion={handleSendMessage} />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div ref={messagesStartRef} />
+                {messages.map((message, index) => (
+                  <ChatMessage key={index} message={message} avatarId={selectedAvatar} />
+                ))}
+                {isLoading && (
+                  <div className="flex gap-3">
+                    <FlavioAvatar avatarId={selectedAvatar} size="sm" />
+                    <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4">
+                      <div className="flex gap-2 items-center">
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="text-xs text-slate-500 ml-2">{consultorName} está analisando...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </>
+            )}
           </div>
         </div>
       </div>
