@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -12,6 +11,7 @@ import {
   TrendingUp,
   Brain,
   Repeat,
+  Menu,
 } from "lucide-react";
 import {
   Sidebar,
@@ -171,10 +171,16 @@ export default function Layout({ children, currentPageName }) {
         </Sidebar>
 
         <SidebarInset className="flex-1 flex flex-col overflow-hidden">
-          {/* Header mobile */}
-          <header className="bg-white border-b border-slate-200 px-6 py-4 md:hidden sticky top-0 z-10 flex-shrink-0">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200" />
+          {/* Header mobile - Botão de menu melhorado */}
+          <header className="bg-white border-b border-slate-200 px-4 py-3 md:hidden sticky top-0 z-10 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              {/* Botão de menu destacado e maior */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-2 hover:shadow-xl transition-all active:scale-95">
+                <SidebarTrigger className="text-white hover:bg-transparent">
+                  <Menu className="w-6 h-6" />
+                </SidebarTrigger>
+              </div>
+              
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-white" />
