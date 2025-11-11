@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -365,26 +364,26 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex flex-col">
-      <div className="flex-1 overflow-hidden flex flex-col max-w-5xl mx-auto w-full p-4 md:p-6">
-        {/* Header */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-4 border-2 border-purple-100">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-4 flex-1">
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-                <User className="w-8 h-8 text-white" />
+      <div className="flex-1 overflow-hidden flex flex-col max-w-6xl mx-auto w-full p-3 md:p-4">
+        {/* Header Compacto */}
+        <div className="bg-white rounded-xl shadow-lg p-4 mb-3 border border-purple-100">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                <User className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <h1 className="text-2xl font-bold text-slate-900">Flávio - Seu Consultor Financeiro</h1>
-                  <div className="flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 rounded-full">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg font-bold text-slate-900">Flávio</h1>
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 px-2 py-0.5 rounded-full">
                     <Zap className="w-3 h-3 text-purple-600" />
-                    <span className="text-xs font-semibold text-purple-700">IA Avançada</span>
+                    <span className="text-xs font-semibold text-purple-700">Consultor IA</span>
                   </div>
                 </div>
-                <p className="text-slate-600 text-sm">
+                <p className="text-xs text-slate-600 truncate">
                   {hasBusinessContext 
-                    ? `Consultor pessoal do ${user.business_name} 🚀`
-                    : "Consultoria financeira humanizada, disponível 24/7"
+                    ? `${user.business_name} 🚀`
+                    : "Seu consultor financeiro pessoal"
                   }
                 </p>
               </div>
@@ -395,10 +394,10 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                   variant="outline"
                   size="sm"
                   onClick={handleResetConversation}
-                  className="gap-2"
+                  className="gap-1.5 h-8 text-xs"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  Nova Conversa
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Nova</span>
                 </Button>
               )}
               {hasBusinessContext && (
@@ -406,20 +405,19 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                   variant="outline"
                   size="sm"
                   onClick={() => setShowContextDialog(true)}
-                  className="gap-2"
+                  className="gap-1.5 h-8 text-xs"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  Atualizar Perfil
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Perfil</span>
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Quick Insights */}
+          {/* Quick Insights - Mais compactos */}
           {quickInsights && quickInsights.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <p className="text-xs font-semibold text-slate-600 mb-2">📊 Flávio identificou:</p>
-              <div className="flex flex-wrap gap-2">
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <div className="flex flex-wrap gap-1.5">
                 {quickInsights.map((insight, idx) => {
                   const Icon = insight.icon;
                   const colors = {
@@ -428,9 +426,9 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                     danger: 'bg-rose-50 text-rose-700 border-rose-200'
                   };
                   return (
-                    <div key={idx} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${colors[insight.type]}`}>
-                      <Icon className="w-3.5 h-3.5" />
-                      <span className="text-xs font-medium">{insight.text}</span>
+                    <div key={idx} className={`flex items-center gap-1 px-2 py-1 rounded-full border text-xs ${colors[insight.type]}`}>
+                      <Icon className="w-3 h-3 flex-shrink-0" />
+                      <span className="font-medium truncate">{insight.text}</span>
                     </div>
                   );
                 })}
@@ -439,51 +437,51 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
           )}
         </div>
 
-        {/* Alerts */}
+        {/* Alerts Compactos */}
         {!hasBusinessContext && messages.length > 0 && (
-          <Alert className="mb-4 border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-900">
-              <strong>💡 Dica do Flávio:</strong> Configure o contexto do seu negócio para análises ainda mais precisas!
+          <Alert className="mb-3 border-orange-200 bg-orange-50 py-2">
+            <AlertCircle className="h-3.5 w-3.5 text-orange-600" />
+            <AlertDescription className="text-orange-900 text-xs">
+              <strong>💡 Dica:</strong> Configure seu perfil para análises mais precisas!
               <Button
                 variant="link"
                 size="sm"
                 onClick={() => setShowContextDialog(true)}
-                className="text-orange-700 hover:text-orange-900 p-0 h-auto ml-2"
+                className="text-orange-700 hover:text-orange-900 p-0 h-auto ml-1 text-xs"
               >
-                Configurar agora →
+                Configurar →
               </Button>
             </AlertDescription>
           </Alert>
         )}
 
         {transactions.length === 0 && (
-          <Alert className="mb-4 border-blue-200 bg-blue-50">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-900">
-              <strong>📊 Flávio precisa de dados:</strong> Adicione transações para eu fazer análises profundas e dar recomendações personalizadas!
+          <Alert className="mb-3 border-blue-200 bg-blue-50 py-2">
+            <AlertCircle className="h-3.5 w-3.5 text-blue-600" />
+            <AlertDescription className="text-blue-900 text-xs">
+              <strong>📊 Adicione transações</strong> para análises profundas e recomendações personalizadas!
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Chat Area */}
-        <div className="flex-1 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border-2 border-purple-100">
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* Área de Chat - MUITO MAIOR e DESTACADA */}
+        <div className="flex-1 bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col border-4 border-purple-200">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center">
-                  <User className="w-10 h-10 text-purple-600" />
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-4">
+                <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                  <User className="w-12 h-12 text-purple-600" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                  <h2 className="text-3xl font-bold text-slate-900 mb-3">
                     E aí! Sou o Flávio 👋
                   </h2>
-                  <p className="text-slate-600 max-w-md">
+                  <p className="text-slate-600 max-w-lg text-lg">
                     Seu consultor financeiro pessoal. Bora analisar suas finanças, encontrar oportunidades e fazer planos práticos?
                   </p>
                 </div>
                 
-                <div className="w-full max-w-2xl">
+                <div className="w-full max-w-3xl">
                   <SuggestedQuestions onSelectQuestion={handleSendMessage} />
                 </div>
               </div>
@@ -513,15 +511,15 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
             )}
           </div>
 
-          {/* Input Area */}
-          <div className="border-t border-slate-200 p-4 bg-slate-50">
+          {/* Área de Input - MUITO DESTACADA */}
+          <div className="border-t-4 border-purple-200 p-4 md:p-6 bg-gradient-to-r from-purple-50 to-blue-50">
             {messages.length > 0 && (
-              <div className="mb-3">
+              <div className="mb-4">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleResetConversation}
-                  className="w-full gap-2 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+                  className="w-full gap-2 bg-white hover:bg-purple-50 border-purple-200 shadow-sm"
                 >
                   <RotateCcw className="w-4 h-4" />
                   Nova Conversa com o Flávio
@@ -533,30 +531,40 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                 e.preventDefault();
                 handleSendMessage();
               }}
-              className="flex gap-2"
+              className="flex gap-3"
             >
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Conversa comigo sobre suas finanças..."
-                disabled={isLoading}
-                className="flex-1 bg-white border-slate-300 focus:border-purple-500 focus:ring-purple-500"
-              />
+              <div className="flex-1 relative">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="💬 Pergunte qualquer coisa sobre suas finanças..."
+                  disabled={isLoading}
+                  className="h-14 text-base bg-white border-2 border-purple-300 focus:border-purple-500 focus:ring-4 focus:ring-purple-200 shadow-lg rounded-xl px-5 placeholder:text-slate-400"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hidden md:block">
+                  Enter para enviar
+                </div>
+              </div>
               <Button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-6"
+                className="h-14 px-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-xl text-base font-semibold rounded-xl"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Send className="w-4 h-4 mr-2" />
+                    <Send className="w-5 h-5 mr-2" />
                     Enviar
                   </>
                 )}
               </Button>
             </form>
+            
+            {/* Dica visual */}
+            <p className="text-center text-xs text-slate-500 mt-3">
+              ✨ <strong>Dica:</strong> Quanto mais detalhes você der, melhor será minha análise!
+            </p>
           </div>
         </div>
       </div>
