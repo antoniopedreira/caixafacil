@@ -384,9 +384,9 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
     return insights;
   }, [financialData]);
 
-  const isLoading = loadingUser || loadingTransactions || loadingRecurring;
+  const isLoadingData = loadingUser || loadingTransactions || loadingRecurring;
 
-  if (isLoading) {
+  if (isLoadingData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6">
         <div className="max-w-4xl mx-auto space-y-4">
