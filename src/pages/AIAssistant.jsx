@@ -13,16 +13,8 @@ import { ptBR } from "date-fns/locale";
 import ChatMessage from "../components/ai/ChatMessage";
 import SuggestedQuestions from "../components/ai/SuggestedQuestions";
 import BusinessContextDialog from "../components/ai/BusinessContextDialog";
-import FlavioAvatar from "../components/ai/FlavioAvatar";
+import FlavioAvatar, { FLAVIO_AVATARS } from "../components/ai/FlavioAvatar";
 import AvatarSelector from "../components/ai/AvatarSelector";
-
-// Define a mapping for avatar IDs to names
-// This can be expanded as more avatars are added
-const FLAVIO_AVATARS = {
-  'avatar1': { name: 'Flávio' },
-  'avatar2': { name: 'Flávia' }, // Example for another avatar that might be 'Flávia'
-  // Add more avatars here if they have different names
-};
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([]);
