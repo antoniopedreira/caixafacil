@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -484,36 +485,6 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                 
                 <div className="w-full max-w-2xl">
                   <SuggestedQuestions onSelectQuestion={handleSendMessage} />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mt-8">
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center mb-3">
-                      <Brain className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Análise Humanizada</h3>
-                    <p className="text-sm text-slate-600">
-                      Olho seus dados como um consultor de verdade, não como robô
-                    </p>
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mb-3">
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Consultoria Proativa</h3>
-                    <p className="text-sm text-slate-600">
-                      Te aviso dos problemas antes deles virarem dor de cabeça
-                    </p>
-                  </div>
-                  <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                    <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center mb-3">
-                      <Zap className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Ações Práticas</h3>
-                    <p className="text-sm text-slate-600">
-                      Estratégias que você consegue implementar de verdade
-                    </p>
-                  </div>
                 </div>
               </div>
             ) : (

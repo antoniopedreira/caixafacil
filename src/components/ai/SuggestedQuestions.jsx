@@ -62,7 +62,7 @@ export default function SuggestedQuestions({ onSelectQuestion }) {
         <h3 className="text-sm font-semibold text-slate-700">Perguntas Sugeridas</h3>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {SUGGESTED_QUESTIONS.map((question, index) => {
           const Icon = question.icon;
           return (
@@ -72,10 +72,10 @@ export default function SuggestedQuestions({ onSelectQuestion }) {
               className={`${question.color} border-0 justify-start text-left h-auto py-3 px-4 transition-all hover:shadow-md`}
               onClick={() => onSelectQuestion(question.text)}
             >
-              <Icon className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
+              <Icon className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium mb-1 opacity-70">{question.category}</p>
-                <p className="text-sm font-medium leading-snug line-clamp-2">{question.text}</p>
+                <p className="text-sm font-medium leading-snug whitespace-normal">{question.text}</p>
               </div>
             </Button>
           );
