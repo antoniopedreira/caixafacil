@@ -61,7 +61,7 @@ export default function TransactionDetailModal({ transaction, allTransactions, o
 
     const currentDescNormalized = normalizeDescription(transaction.description);
 
-    // Busca nos últimos 6 meses
+    // Busca nos últimos 6 meses (do mais recente ao mais antigo)
     for (let i = 0; i < 6; i++) {
       const monthDate = subMonths(currentDate, i);
       const monthStart = startOfMonth(monthDate);
@@ -89,15 +89,15 @@ export default function TransactionDetailModal({ transaction, allTransactions, o
       });
     }
 
-    return historyData.reverse();
+    return historyData; // Já está do mais recente (i=0) ao mais antigo (i=5)
   }, [transaction, allTransactions]);
 
   // Calcula variação vs mês anterior
   const variation = useMemo(() => {
     if (history.length < 2) return null;
 
-    const current = history[history.length - 1];
-    const previous = history[history.length - 2];
+    const current = history[0]; // Mês atual (mais recente)
+    const previous = history[1]; // Mês anterior
 
     if (!current || !previous || previous.total === 0) return null;
 
@@ -111,13 +111,14 @@ export default function TransactionDetailModal({ transaction, allTransactions, o
     };
   }, [history]);
 
-  // Calcula média dos últimos 3 meses
+  // Calcula média SOMENTE dos meses que tiveram gastos (total > 0)
   const average = useMemo(() => {
-    if (history.length < 3) return 0;
+    const monthsWithExpenses = history.filter(h => h.total > 0);
     
-    const lastThree = history.slice(-3);
-    const sum = lastThree.reduce((acc, h) => acc + h.total, 0);
-    return sum / 3;
+    if (monthsWithExpenses.length === 0) return 0;
+    
+    const sum = monthsWithExpenses.reduce((acc, h) => acc + h.total, 0);
+    return sum / monthsWithExpenses.length;
   }, [history]);
 
   return (
@@ -240,7 +241,7 @@ export default function TransactionDetailModal({ transaction, allTransactions, o
                             className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
                             style={{
                               width: `${history.length > 0 ? (item.total / Math.max(...history.map(h => h.total))) * 100 : 0}%`,
-                              minWidth: '20px'
+                              minWidth: item.total > 0 ? '20px' : '0px'
                             }}
                           />
                           <span className="text-sm font-bold text-slate-900 whitespace-nowrap">
@@ -257,8 +258,8 @@ export default function TransactionDetailModal({ transaction, allTransactions, o
                       {index < history.length - 1 && (
                         <div className="text-xs text-slate-400">
                           {(() => {
-                            const current = history[index + 1];
-                            const previous = item;
+                            const current = history[index];
+                            const previous = history[index + 1];
                             if (!current || !previous || previous.total === 0) return null;
 
                             const change = current.total - previous.total;
@@ -288,9 +289,12 @@ export default function TransactionDetailModal({ transaction, allTransactions, o
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-blue-700 mb-1">Média (últimos 3 meses)</p>
+                      <p className="text-blue-700 mb-1">Média (meses com gasto)</p>
                       <p className="font-bold text-blue-900 text-lg">
                         {formatCurrency(average)}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        {history.filter(h => h.total > 0).length} meses considerados
                       </p>
                     </div>
                     <div>
