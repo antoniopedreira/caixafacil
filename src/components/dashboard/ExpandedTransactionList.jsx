@@ -1,237 +1,147 @@
-
-import React, { useState, useMemo } from 'react';
-import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, Info } from "lucide-react";
+import React, { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ptBR } from 'date-fns/locale';
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import TransactionDetailModal from './TransactionDetailModal';
 
 const CATEGORY_NAMES = {
-  vendas: "Vendas",
-  servicos: "Serviços",
-  investimentos: "Investimentos",
-  emprestimos_recebidos: "Empréstimos Recebidos",
-  outras_receitas: "Outras Receitas",
-  salarios_funcionarios: "Salários",
-  fornecedores: "Fornecedores",
-  aluguel: "Aluguel",
-  contas_servicos: "Contas e Serviços",
-  impostos_taxas: "Impostos e Taxas",
-  marketing_publicidade: "Marketing",
-  equipamentos_materiais: "Equipamentos",
-  manutencao: "Manutenção",
-  combustivel_transporte: "Transporte",
-  emprestimos_pagos: "Empréstimos Pagos",
-  outras_despesas: "Outras Despesas"
+  // Receitas
+  vendas: 'Vendas',
+  servicos: 'Serviços',
+  investimentos: 'Investimentos',
+  emprestimos_recebidos: 'Empréstimos Recebidos',
+  outras_receitas: 'Outras Receitas',
+  // Despesas
+  salarios_funcionarios: 'Salários',
+  fornecedores: 'Fornecedores',
+  aluguel: 'Aluguel',
+  contas_servicos: 'Contas/Serviços',
+  impostos_taxas: 'Impostos/Taxas',
+  marketing_publicidade: 'Marketing',
+  equipamentos_materiais: 'Equipamentos',
+  manutencao: 'Manutenção',
+  combustivel_transporte: 'Combustível',
+  emprestimos_pagos: 'Empréstimos Pagos',
+  outras_despesas: 'Outras Despesas',
 };
 
-// Função para abreviar e formatar descrição
-const formatDescription = (description, maxWords = 3) => {
-  if (!description) return '';
-  
-  const toTitleCase = (str) => {
-    return str.toLowerCase().split(' ').map(word => {
-      if (['de', 'da', 'do', 'e', 'a', 'o', 'das', 'dos'].includes(word.toLowerCase())) {
-        return word.toLowerCase();
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1);
-    }).join(' ');
-  };
-  
-  // Remove frases como "recebido de", "enviado para", etc
-  let cleaned = description
-    .replace(/recebido\s+de\s+/gi, '')
-    .replace(/enviado\s+para\s+/gi, '')
-    .replace(/recebido\s+/gi, '')
-    .replace(/enviado\s+/gi, '')
-    .trim();
-  
-  // Divide em palavras e pega apenas as primeiras
-  const words = cleaned.split(' ').filter(w => w.length > 0);
-  const abbreviated = words.slice(0, maxWords).join(' ');
-  
-  // Aplica Title Case
-  return toTitleCase(abbreviated);
-};
+function formatDescription(text) {
+  if (!text) return '';
+  const cleaned = text.trim();
+  if (cleaned.length <= 40) return cleaned;
+  return cleaned.slice(0, 40) + '...';
+}
 
-// Função para formatar valores com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(value);
 };
 
-export default function ExpandedTransactionList({ transactions, type }) {
+export default function ExpandedTransactionList({ transactions, type, onClose, allTransactions }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-  const groupedByCategory = useMemo(() => {
+  // Agrupa transações por categoria
+  const groupedTransactions = useMemo(() => {
     const groups = {};
     
-    transactions.forEach(t => {
-      if (!groups[t.category]) {
-        groups[t.category] = {
-          category: t.category,
-          categoryName: CATEGORY_NAMES[t.category] || t.category,
-          total: 0,
-          transactions: []
-        };
+    transactions.forEach(transaction => {
+      const category = transaction.category || 'outros';
+      if (!groups[category]) {
+        groups[category] = [];
       }
-      groups[t.category].total += Math.abs(t.amount);
-      groups[t.category].transactions.push(t);
+      groups[category].push(transaction);
     });
 
-    return Object.values(groups).sort((a, b) => b.total - a.total);
+    // Ordena por total de cada categoria (maior primeiro)
+    const sortedGroups = Object.entries(groups)
+      .map(([category, items]) => {
+        const total = items.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        return { category, items, total };
+      })
+      .sort((a, b) => b.total - a.total);
+
+    return sortedGroups;
   }, [transactions]);
 
-  const toggleCategory = (category) => {
-    setExpandedCategory(expandedCategory === category ? null : category);
+  const handleTransactionClick = (transaction) => {
+    setSelectedTransaction(transaction);
   };
 
   return (
     <>
-      <div className={`ml-2 mt-2 rounded-lg ${
-        type === 'income' ? 'bg-emerald-50/50' : 'bg-rose-50/50'
-      }`}>
-        <div className="p-2 space-y-1">
-          {groupedByCategory.length === 0 ? (
-            <div className="text-center py-4 text-slate-500 text-sm">
-              Nenhuma transação encontrada
-            </div>
-          ) : (
-            groupedByCategory.map((group) => (
-              <div key={group.category}>
-                {/* Linha da categoria */}
-                <div
-                  className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
-                    expandedCategory === group.category
-                      ? type === 'income' 
-                        ? 'bg-emerald-100 hover:bg-emerald-100' 
-                        : 'bg-rose-100 hover:bg-rose-100'
-                      : 'hover:bg-white'
-                  }`}
-                  onClick={() => toggleCategory(group.category)}
+      <div className="mt-4 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="max-h-96 overflow-y-auto">
+          <div className="divide-y divide-slate-200">
+            {groupedTransactions.map(({ category, items, total }) => (
+              <div key={category}>
+                {/* Header da categoria */}
+                <button
+                  onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                 >
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    {expandedCategory === group.category ? (
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <div className="flex items-center gap-3">
+                    {expandedCategory === category ? (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
                     ) : (
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
                     )}
-                    <span className="font-medium text-slate-900 text-xs truncate">
-                      {group.categoryName}
+                    <span className="font-semibold text-slate-900 text-sm">
+                      {CATEGORY_NAMES[category] || category}
                     </span>
+                    <Badge variant="outline" className="text-xs">
+                      {items.length} {items.length === 1 ? 'transação' : 'transações'}
+                    </Badge>
                   </div>
-                  <span className={`font-bold text-xs flex-shrink-0 ml-2 ${
+                  <span className={`font-bold text-sm ${
                     type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
-                    R$ {formatCurrency(group.total)}
+                    R$ {formatCurrency(total)}
                   </span>
-                </div>
+                </button>
 
                 {/* Lista de transações da categoria */}
-                {expandedCategory === group.category && (
-                  <div className="ml-4 mt-1 space-y-0.5">
-                    {group.transactions
-                      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-                      .map((transaction) => (
-                        <div
-                          key={transaction.id}
-                          className="flex items-center justify-between p-1.5 bg-white rounded text-xs hover:bg-slate-50 cursor-pointer transition-colors group"
-                          onClick={() => setSelectedTransaction(transaction)}
-                        >
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-slate-500 text-[10px] w-14 flex-shrink-0">
-                              {format(new Date(transaction.date), "dd/MM")}
-                            </span>
-                            <span className="text-slate-900 text-xs truncate flex-1">
-                              {formatDescription(transaction.description)}
-                            </span>
-                            <Info className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                          </div>
-                          <span className={`font-semibold text-xs flex-shrink-0 ml-2 ${
-                            type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                          }`}>
-                            R$ {formatCurrency(Math.abs(transaction.amount))}
-                          </span>
+                {expandedCategory === category && (
+                  <div className="bg-slate-50 divide-y divide-slate-200">
+                    {items.map((transaction, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleTransactionClick(transaction)}
+                        className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 transition-colors text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-900 truncate">
+                            {formatDescription(transaction.description)}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {format(new Date(transaction.date), "dd/MM/yyyy", { locale: ptBR })}
+                          </p>
                         </div>
-                      ))}
+                        <span className={`font-semibold text-sm ml-4 whitespace-nowrap ${
+                          type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                        }`}>
+                          R$ {formatCurrency(Math.abs(transaction.amount))}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Modal de detalhes da transação */}
-      <Dialog open={!!selectedTransaction} onOpenChange={() => setSelectedTransaction(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Transação</DialogTitle>
-          </DialogHeader>
-          {selectedTransaction && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-slate-600 mb-1">Descrição Completa</p>
-                <p className="font-medium text-slate-900">{selectedTransaction.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Data</p>
-                  <p className="font-medium text-slate-900">
-                    {format(new Date(selectedTransaction.date), "dd/MM/yyyy")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Valor</p>
-                  <p className={`font-bold ${
-                    selectedTransaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                  }`}>
-                    R$ {formatCurrency(Math.abs(selectedTransaction.amount))}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-slate-600 mb-1">Categoria</p>
-                <Badge variant="outline">
-                  {CATEGORY_NAMES[selectedTransaction.category] || selectedTransaction.category}
-                </Badge>
-              </div>
-
-              {selectedTransaction.payment_method && (
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Forma de Pagamento</p>
-                  <p className="font-medium text-slate-900 capitalize">
-                    {selectedTransaction.payment_method.replace(/_/g, ' ')}
-                  </p>
-                </div>
-              )}
-
-              {selectedTransaction.bank_account && (
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Conta Bancária</p>
-                  <p className="font-medium text-slate-900">{selectedTransaction.bank_account}</p>
-                </div>
-              )}
-
-              {selectedTransaction.notes && (
-                <div>
-                  <p className="text-sm text-slate-600 mb-1">Observações</p>
-                  <p className="text-sm text-slate-700">{selectedTransaction.notes}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Modal de detalhes */}
+      <TransactionDetailModal
+        transaction={selectedTransaction}
+        allTransactions={allTransactions || transactions}
+        open={!!selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </>
   );
 }
