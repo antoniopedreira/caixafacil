@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
@@ -7,6 +6,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import TransactionDetailModal from './TransactionDetailModal';
 
 // Função para formatar valor com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
@@ -77,56 +77,71 @@ const getCategoryIcon = (category, type) => {
 };
 
 export default function RecentTransactions({ transactions }) {
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const recentTransactions = transactions.slice(0, 5);
 
   return (
-    <Card className="border-0 shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Últimas transações</CardTitle>
-          <Link to={createPageUrl('Transactions')}>
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-              Ver todas
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </Link>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {recentTransactions.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            <p className="text-sm">Nenhuma transação registrada ainda</p>
+    <>
+      <Card className="border-0 shadow-md">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Últimas transações</CardTitle>
+            <Link to={createPageUrl('Transactions')}>
+              <button className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                Ver todas
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </Link>
           </div>
-        ) : (
-          recentTransactions.map((transaction) => (
-            <div key={transaction.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-              <div className="flex items-center gap-3">
-                {getCategoryIcon(transaction.category, transaction.type)}
-                <div>
-                  <p className="font-semibold text-slate-900 text-sm">
-                    {formatDescription(transaction.description)}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-slate-600">
-                      {format(new Date(transaction.date), "dd 'de' MMM", { locale: ptBR })}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {recentTransactions.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <p className="text-sm">Nenhuma transação registrada ainda</p>
+            </div>
+          ) : (
+            recentTransactions.map((transaction) => (
+              <button
+                key={transaction.id}
+                onClick={() => setSelectedTransaction(transaction)}
+                className="w-full flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  {getCategoryIcon(transaction.category, transaction.type)}
+                  <div>
+                    <p className="font-semibold text-slate-900 text-sm">
+                      {formatDescription(transaction.description)}
                     </p>
-                    <Badge variant="outline" className="text-xs">
-                      {CATEGORY_NAMES[transaction.category]}
-                    </Badge>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-slate-600">
+                        {format(new Date(transaction.date), "dd 'de' MMM", { locale: ptBR })}
+                      </p>
+                      <Badge variant="outline" className="text-xs">
+                        {CATEGORY_NAMES[transaction.category]}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <p className={`font-bold ${
-                  transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                }`}>
-                  {transaction.type === 'income' ? '+' : '-'} R$ {formatCurrency(Math.abs(transaction.amount))}
-                </p>
-              </div>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+                <div className="text-right">
+                  <p className={`font-bold ${
+                    transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                  }`}>
+                    {transaction.type === 'income' ? '+' : '-'} R$ {formatCurrency(Math.abs(transaction.amount))}
+                  </p>
+                </div>
+              </button>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de detalhes */}
+      <TransactionDetailModal
+        transaction={selectedTransaction}
+        allTransactions={transactions}
+        open={!!selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
+    </>
   );
 }
