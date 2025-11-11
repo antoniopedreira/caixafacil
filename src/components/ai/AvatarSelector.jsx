@@ -25,12 +25,22 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
     }
   };
 
+  const handleClose = () => {
+    if (!isLoading) {
+      onClose();
+    }
+  };
+
   // Separa avatares masculinos e femininos
   const maleAvatars = Object.values(FLAVIO_AVATARS).filter(a => a.gender === 'male');
   const femaleAvatars = Object.values(FLAVIO_AVATARS).filter(a => a.gender === 'female');
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isLoading && onClose(isOpen)}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen && !isLoading) {
+        onClose();
+      }
+    }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">Escolha seu Consultor(a) Financeiro</DialogTitle>
@@ -114,7 +124,7 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button 
             variant="outline" 
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isLoading}
           >
             Cancelar
