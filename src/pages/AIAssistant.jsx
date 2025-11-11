@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target } from "lucide-react";
+import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -19,6 +18,7 @@ export default function AIAssistant() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesStartRef = useRef(null);
   const [showContextDialog, setShowContextDialog] = useState(false);
 
   const { data: user, isLoading: loadingUser } = useQuery({
@@ -46,9 +46,16 @@ export default function AIAssistant() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const scrollToTop = () => {
+    messagesStartRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Só rola para o final quando estiver carregando (mostrando os "..." de digitação)
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (isLoading) {
+      scrollToBottom();
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     if (user && !user.business_segment && messages.length === 0) {
@@ -68,13 +75,11 @@ export default function AIAssistant() {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     
-    // Transações do mês atual
     const currentMonthTransactions = transactions.filter(t => {
       const date = new Date(t.date);
       return date >= monthStart && date <= monthEnd;
     });
 
-    // Transações do mês anterior
     const lastMonthStart = startOfMonth(subMonths(currentDate, 1));
     const lastMonthEnd = endOfMonth(subMonths(currentDate, 1));
     const lastMonthTransactions = transactions.filter(t => {
@@ -82,12 +87,10 @@ export default function AIAssistant() {
       return date >= lastMonthStart && date <= lastMonthEnd;
     });
 
-    // Cálculo do saldo total
     const totalBalance = transactions.reduce((sum, t) => {
       return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
     }, 0);
 
-    // Resumo do mês atual
     const currentIncome = currentMonthTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -96,7 +99,6 @@ export default function AIAssistant() {
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    // Resumo do mês anterior
     const lastIncome = lastMonthTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -105,11 +107,9 @@ export default function AIAssistant() {
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    // Variações mês a mês
     const incomeVariation = lastIncome > 0 ? ((currentIncome - lastIncome) / lastIncome) * 100 : 0;
     const expenseVariation = lastExpense > 0 ? ((currentExpense - lastExpense) / lastExpense) * 100 : 0;
 
-    // Top despesas por categoria
     const expensesByCategory = {};
     currentMonthTransactions
       .filter(t => t.type === 'expense')
@@ -125,7 +125,6 @@ export default function AIAssistant() {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
 
-    // Média de receita dos últimos 3 meses
     const threeMonthsAgo = subMonths(currentDate, 3);
     const last3MonthsIncome = transactions
       .filter(t => {
@@ -136,11 +135,9 @@ export default function AIAssistant() {
     
     const avgMonthlyIncome = last3MonthsIncome / 3;
 
-    // Despesas recorrentes ativas
     const activeRecurring = recurringExpenses.filter(e => e.status === 'active');
     const totalRecurringExpenses = activeRecurring.reduce((sum, e) => sum + e.amount, 0);
 
-    // Runway de caixa (quantos dias o caixa aguenta com base nas despesas médias)
     let cashRunway = null;
     if (currentExpense > 0) {
       const avgDailyExpense = currentExpense / 30;
@@ -149,7 +146,6 @@ export default function AIAssistant() {
       }
     }
 
-    // Análise de sazonalidade (últimos 6 meses)
     const last6Months = [];
     for (let i = 0; i < 6; i++) {
       const monthDate = subMonths(currentDate, i);
@@ -172,7 +168,6 @@ export default function AIAssistant() {
       });
     }
 
-    // Detecta tendência
     const hasGrowingIncome = last6Months.length >= 3 && 
       last6Months[0].income > last6Months[2].income;
     const hasGrowingExpense = last6Months.length >= 3 && 
@@ -199,7 +194,7 @@ export default function AIAssistant() {
       totalRecurringExpenses,
       avgMonthlyIncome,
       cashRunway,
-      last6Months: last6Months.reverse(), // Do mais antigo para o mais recente
+      last6Months: last6Months.reverse(),
       trends: {
         hasGrowingIncome,
         hasGrowingExpense
@@ -253,6 +248,11 @@ export default function AIAssistant() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      
+      // Rola para o início da resposta (não para o final)
+      setTimeout(() => {
+        scrollToTop();
+      }, 100);
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -265,6 +265,11 @@ export default function AIAssistant() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResetConversation = () => {
+    setMessages([]);
+    setInput("");
   };
 
   const handleSaveContext = async (contextData) => {
@@ -300,14 +305,12 @@ Como posso te ajudar hoje? Você pode:
     }
   };
 
-  // Insights rápidos na interface
   const quickInsights = useMemo(() => {
     if (!financialData) return null;
 
     const insights = [];
     const { currentBalance, monthSummary, variations, cashRunway, totalRecurringExpenses } = financialData;
 
-    // Alerta de caixa baixo
     if (currentBalance < totalRecurringExpenses && currentBalance > 0) {
       insights.push({
         type: 'warning',
@@ -316,7 +319,6 @@ Como posso te ajudar hoje? Você pode:
       });
     }
 
-    // Alerta de prejuízo
     if (monthSummary.balance < 0) {
       insights.push({
         type: 'danger',
@@ -325,7 +327,6 @@ Como posso te ajudar hoje? Você pode:
       });
     }
 
-    // Crescimento de receita
     if (variations.income > 10) {
       insights.push({
         type: 'success',
@@ -334,7 +335,6 @@ Como posso te ajudar hoje? Você pode:
       });
     }
 
-    // Aumento de despesas
     if (variations.expense > 15) {
       insights.push({
         type: 'warning',
@@ -383,17 +383,30 @@ Como posso te ajudar hoje? Você pode:
                 </p>
               </div>
             </div>
-            {hasBusinessContext && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowContextDialog(true)}
-                className="flex-shrink-0"
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Atualizar Perfil
-              </Button>
-            )}
+            <div className="flex gap-2 flex-shrink-0">
+              {messages.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetConversation}
+                  className="gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Nova Conversa
+                </Button>
+              )}
+              {hasBusinessContext && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowContextDialog(true)}
+                  className="gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Atualizar Perfil
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Quick Insights */}
@@ -500,6 +513,7 @@ Como posso te ajudar hoje? Você pode:
               </div>
             ) : (
               <>
+                <div ref={messagesStartRef} />
                 {messages.map((message, index) => (
                   <ChatMessage key={index} message={message} />
                 ))}
@@ -524,6 +538,19 @@ Como posso te ajudar hoje? Você pode:
 
           {/* Input Area */}
           <div className="border-t border-slate-200 p-4 bg-slate-50">
+            {messages.length > 0 && (
+              <div className="mb-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetConversation}
+                  className="w-full gap-2 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Nova Conversa - Voltar às Perguntas Sugeridas
+                </Button>
+              </div>
+            )}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -557,7 +584,6 @@ Como posso te ajudar hoje? Você pode:
         </div>
       </div>
 
-      {/* Business Context Dialog */}
       <BusinessContextDialog
         open={showContextDialog}
         onClose={() => setShowContextDialog(false)}

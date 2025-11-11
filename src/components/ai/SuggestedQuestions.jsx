@@ -72,10 +72,10 @@ export default function SuggestedQuestions({ onSelectQuestion }) {
               className={`${question.color} border-0 justify-start text-left h-auto py-3 px-4 transition-all hover:shadow-md`}
               onClick={() => onSelectQuestion(question.text)}
             >
-              <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+              <Icon className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium mb-0.5 opacity-70">{question.category}</p>
-                <p className="text-sm font-medium leading-tight">{question.text}</p>
+                <p className="text-xs font-medium mb-1 opacity-70">{question.category}</p>
+                <p className="text-sm font-medium leading-snug line-clamp-2">{question.text}</p>
               </div>
             </Button>
           );
