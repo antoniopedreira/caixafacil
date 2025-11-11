@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw, User, Palette } from "lucide-react";
+import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw, User, Palette, Home } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -24,6 +23,7 @@ export default function AIAssistant() {
   const messagesStartRef = useRef(null);
   const [showContextDialog, setShowContextDialog] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const isFirstLoadRef = useRef(true); // Para controlar primeira carga
 
   const queryClient = useQueryClient();
 
@@ -59,22 +59,29 @@ export default function AIAssistant() {
     messagesStartRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Só rola para o final quando estiver carregando (mostrando os "..." de digitação)
   useEffect(() => {
     if (isLoading) {
       scrollToBottom();
     }
   }, [isLoading]);
 
+  // Só mostra os modais na primeira carga da página
   useEffect(() => {
-    if (user && !user.business_segment && messages.length === 0) {
+    if (!user || !isFirstLoadRef.current) return;
+    
+    if (!user.business_segment && messages.length === 0) {
       setShowContextDialog(true);
+      isFirstLoadRef.current = false;
+      return;
     }
-    // Se não tem avatar escolhido, mostra o seletor (só na primeira vez)
-    if (user && !user.flavio_avatar && messages.length === 0 && !showContextDialog) {
+    
+    if (!user.flavio_avatar && messages.length === 0 && !showContextDialog) {
       setTimeout(() => {
         setShowAvatarSelector(true);
+        isFirstLoadRef.current = false;
       }, 500);
+    } else {
+      isFirstLoadRef.current = false;
     }
   }, [user, messages, showContextDialog]);
 
@@ -88,10 +95,9 @@ export default function AIAssistant() {
 
   const consultorName = useMemo(() => {
     const avatar = FLAVIO_AVATARS[selectedAvatar];
-    return avatar?.name || 'Flávio'; // Default to 'Flávio' if avatarId not found
+    return avatar?.name || 'Flávio';
   }, [selectedAvatar]);
 
-  // Análise financeira avançada
   const financialData = useMemo(() => {
     if (!transactions.length) return null;
 
@@ -273,7 +279,6 @@ export default function AIAssistant() {
 
       setMessages((prev) => [...prev, assistantMessage]);
       
-      // Rola para o início da resposta (não para o final)
       setTimeout(() => {
         scrollToTop();
       }, 100);
@@ -305,7 +310,7 @@ export default function AIAssistant() {
         role: "assistant",
         content: `E aí! Prazer, sou ${consultorName === 'Flávia' ? 'a' : 'o'} ${consultorName}! 👋
 
-Fiquei muito ${consultorName === 'Flávia' ? 'feliz' : 'feliz'} em conhecer o ${contextData.business_name}! ${contextData.business_segment ? `Já trabalhei com vários negócios no ramo de ${contextData.business_segment}, então conheço bem os desafios do dia a dia.` : ''}
+Fiquei muito feliz em conhecer o ${contextData.business_name}! ${contextData.business_segment ? `Já trabalhei com vários negócios no ramo de ${contextData.business_segment}, então conheço bem os desafios do dia a dia.` : ''}
 
 Olha, vou ser ${consultorName === 'Flávia' ? 'direta' : 'direto'}: não sou apenas ${consultorName === 'Flávia' ? 'uma assistente' : 'um assistente'} que responde perguntas. Sou ${consultorName === 'Flávia' ? 'sua consultora financeira pessoal' : 'seu consultor financeiro pessoal'}. Tá mais para ter ${consultorName === 'Flávia' ? 'uma parceira' : 'um parceiro'} de negócios que olha seus números com você do que um robô automático.
 
@@ -437,8 +442,8 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                   onClick={handleResetConversation}
                   className="gap-1.5 h-8 text-xs"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Nova</span>
+                  <Home className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Menu</span>
                 </Button>
               )}
               {hasBusinessContext && (
@@ -455,7 +460,6 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
             </div>
           </div>
 
-          {/* Quick Insights - Mais compactos */}
           {quickInsights && quickInsights.length > 0 && (
             <div className="mt-3 pt-3 border-t border-slate-100">
               <div className="flex flex-wrap gap-1.5">
@@ -478,7 +482,6 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
           )}
         </div>
 
-        {/* Alerts Compactos */}
         {!hasBusinessContext && messages.length > 0 && (
           <Alert className="mb-3 border-orange-200 bg-orange-50 py-2">
             <AlertCircle className="h-3.5 w-3.5 text-orange-600" />
@@ -505,7 +508,6 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
           </Alert>
         )}
 
-        {/* Área de Chat - MUITO MAIOR e DESTACADA */}
         <div className="flex-1 bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col border-4 border-purple-200">
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
             {messages.length === 0 ? (
@@ -550,7 +552,6 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
             )}
           </div>
 
-          {/* Área de Input - MUITO DESTACADA */}
           <div className="border-t-4 border-purple-200 p-4 md:p-6 bg-gradient-to-r from-purple-50 to-blue-50">
             {messages.length > 0 && (
               <div className="mb-4">
@@ -560,8 +561,8 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                   onClick={handleResetConversation}
                   className="w-full gap-2 bg-white hover:bg-purple-50 border-purple-200 shadow-sm"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  Nova Conversa com {consultorName === 'Flávia' ? 'a' : 'o'} {consultorName}
+                  <Home className="w-4 h-4" />
+                  Voltar para o menu de perguntas sugeridas
                 </Button>
               </div>
             )}
@@ -600,7 +601,6 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
               </Button>
             </form>
             
-            {/* Dica visual */}
             <p className="text-center text-xs text-slate-500 mt-3">
               ✨ <strong>Dica:</strong> Quanto mais detalhes você der, melhor será minha análise!
             </p>
