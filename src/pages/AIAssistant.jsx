@@ -1,20 +1,12 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Send, 
-  Loader2, 
-  Sparkles, 
-  AlertCircle,
-  Brain,
-  TrendingUp,
-  Shield
-} from "lucide-react";
-import { format, subMonths } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Brain, Send, Sparkles, AlertCircle, Zap } from "lucide-react";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import ChatMessage from "../components/ai/ChatMessage";
@@ -23,28 +15,30 @@ import BusinessContextDialog from "../components/ai/BusinessContextDialog";
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState("");
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showContextDialog, setShowContextDialog] = useState(false);
   const messagesEndRef = useRef(null);
-  const queryClient = useQueryClient();
+  const [showContextDialog, setShowContextDialog] = useState(false);
 
-  const { data: user } = useQuery({
-    queryKey: ['current-user'],
+  const { data: user, isLoading: loadingUser } = useQuery({
+    queryKey: ['user'],
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: transactions } = useQuery({
+  const { data: transactions, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions'],
     queryFn: () => base44.entities.Transaction.list('-date'),
     initialData: [],
   });
 
+  const { data: recurringExpenses, isLoading: loadingRecurring } = useQuery({
+    queryKey: ['recurring-expenses'],
+    queryFn: () => base44.entities.RecurringExpense.list('-due_day'),
+    initialData: [],
+  });
+
   const updateUserMutation = useMutation({
-    mutationFn: (data) => base44.auth.updateMe(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['current-user'] });
-    },
+    mutationFn: (userData) => base44.auth.updateMe(userData),
   });
 
   const scrollToBottom = () => {
@@ -55,407 +49,346 @@ export default function AIAssistant() {
     scrollToBottom();
   }, [messages]);
 
-  // Verifica se precisa coletar contexto do negócio
   useEffect(() => {
-    if (user && !user.business_context_collected && messages.length === 0) {
-      // Mostra mensagem automática pedindo contexto
-      setTimeout(() => {
-        const welcomeMessage = {
-          text: `Olá! 👋 Sou seu assistente financeiro.\n\nPara te ajudar melhor, preciso conhecer seu negócio. São só 4 perguntas rápidas!\n\n**Vamos começar?** Clique no botão abaixo.`,
-          isUser: false,
-          showContextButton: true
-        };
-        setMessages([welcomeMessage]);
-      }, 500);
+    if (user && !user.business_segment && messages.length === 0) {
+      setShowContextDialog(true);
     }
-  }, [user, messages.length]);
+  }, [user, messages]);
 
-  const handleContextSaved = async (contextData) => {
-    await updateUserMutation.mutateAsync({
-      ...contextData,
-      business_context_collected: true
+  const hasBusinessContext = useMemo(() => {
+    return user?.business_segment && user?.business_name;
+  }, [user]);
+
+  const financialData = useMemo(() => {
+    if (!transactions.length) return null;
+
+    const currentDate = new Date();
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    
+    const currentMonthTransactions = transactions.filter(t => {
+      const date = new Date(t.date);
+      return date >= monthStart && date <= monthEnd;
     });
-    
-    setShowContextDialog(false);
-    
-    // Mensagem de confirmação
-    const confirmMessage = {
-      text: `Perfeito! Agora posso te ajudar de forma muito mais direcionada. 🎯\n\n**O que você quer saber sobre seu negócio?**`,
-      isUser: false
-    };
-    setMessages(prev => [...prev.filter(m => !m.showContextButton), confirmMessage]);
-  };
 
-  // Mapeia segmentos para nomes legíveis
-  const getSegmentName = (segment) => {
-    const segments = {
-      comercio_varejo: "comércio/varejo",
-      restaurante_bar: "restaurante/bar",
-      salao_beleza: "salão de beleza",
-      consultoria_servicos: "consultoria/serviços",
-      construcao_reformas: "construção/reformas",
-      transporte_logistica: "transporte/logística",
-      saude_clinica: "saúde/clínica",
-      educacao_cursos: "educação/cursos",
-      tecnologia_software: "tecnologia/software",
-      industria_fabricacao: "indústria/fabricação",
-      agronegocio: "agronegócio",
-      outros: "outros"
-    };
-    return segments[segment] || segment;
-  };
+    const totalBalance = transactions.reduce((sum, t) => {
+      return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
+    }, 0);
 
-  // Prepara o contexto financeiro do usuário
-  const prepareFinancialContext = () => {
-    const now = new Date();
-    const lastMonth = subMonths(now, 1);
-    const last3Months = subMonths(now, 3);
-    
-    const currentMonthTransactions = transactions.filter(t => 
-      new Date(t.date) >= new Date(now.getFullYear(), now.getMonth(), 1)
-    );
-    
-    const recent3MonthsTransactions = transactions.filter(t => 
-      new Date(t.date) >= last3Months
-    );
-    
-    const totalIncome = currentMonthTransactions
+    const income = currentMonthTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const totalExpense = currentMonthTransactions
+    const expense = currentMonthTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
+
     const expensesByCategory = {};
     currentMonthTransactions
       .filter(t => t.type === 'expense')
       .forEach(t => {
-        expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + Math.abs(t.amount);
+        if (!expensesByCategory[t.category]) {
+          expensesByCategory[t.category] = 0;
+        }
+        expensesByCategory[t.category] += Math.abs(t.amount);
       });
-    
-    const incomeByCategory = {};
-    currentMonthTransactions
-      .filter(t => t.type === 'income')
-      .forEach(t => {
-        incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
-      });
-    
-    const monthlyTrends = [];
-    for (let i = 2; i >= 0; i--) {
-      const monthDate = subMonths(now, i);
-      const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-      const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-      
-      const monthTransactions = transactions.filter(t => {
-        const date = new Date(t.date);
-        return date >= monthStart && date <= monthEnd;
-      });
-      
-      const income = monthTransactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const expense = monthTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      
-      monthlyTrends.push({
-        month: format(monthDate, 'MMMM yyyy', { locale: ptBR }),
+
+    const topExpenses = Object.entries(expensesByCategory)
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+
+    return {
+      currentBalance: totalBalance,
+      monthSummary: {
         income,
         expense,
         balance: income - expense
-      });
-    }
+      },
+      topExpenses,
+      recurringExpenses: recurringExpenses.filter(e => e.status === 'active').slice(0, 5)
+    };
+  }, [transactions, recurringExpenses]);
+
+  const businessContext = useMemo(() => {
+    if (!user) return null;
     
     return {
-      summary: {
-        totalTransactions: transactions.length,
-        currentMonthIncome: totalIncome,
-        currentMonthExpense: totalExpense,
-        currentMonthBalance: totalIncome - totalExpense,
-        numberOfTransactionsThisMonth: currentMonthTransactions.length
-      },
-      expensesByCategory,
-      incomeByCategory,
-      monthlyTrends,
-      recentTransactions: recent3MonthsTransactions.slice(0, 20).map(t => ({
-        date: t.date,
-        description: t.description,
-        amount: t.amount,
-        type: t.type,
-        category: t.category
-      }))
+      business_name: user.business_name,
+      business_segment: user.business_segment,
+      employee_count: user.employee_count,
+      operation_type: user.operation_type,
+      operation_states: user.operation_states,
+      operation_cities: user.operation_cities,
+      main_challenge: user.main_challenge
     };
-  };
+  }, [user]);
 
-  const handleSendMessage = async (question) => {
-    const messageText = question || inputValue.trim();
-    
-    if (!messageText) return;
+  const handleSendMessage = async (messageText) => {
+    const textToSend = messageText || input.trim();
+    if (!textToSend) return;
 
-    // Se não tem contexto, pede para cadastrar
-    if (!user?.business_context_collected) {
-      setShowContextDialog(true);
-      return;
-    }
+    const userMessage = {
+      role: "user",
+      content: textToSend,
+    };
 
-    const userMessage = { text: messageText, isUser: true };
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue("");
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setIsLoading(true);
 
     try {
-      const financialContext = prepareFinancialContext();
-      
-      // Monta contexto do negócio
-      const businessContext = user.business_segment ? `
-📋 **PERFIL DO NEGÓCIO:**
-- Segmento: ${getSegmentName(user.business_segment)}
-- Nome: ${user.business_name || 'Não informado'}
-- Funcionários: ${user.employee_count ? user.employee_count.replace(/_/g, ' ') : 'Não informado'}
-- Faturamento mensal: ${user.monthly_revenue_range ? user.monthly_revenue_range.replace(/_/g, ' ').replace('k', ' mil') : 'Não informado'}
-- Desafio principal: ${user.main_challenge || 'Não informado'}
-` : '';
+      const conversationMessages = [...messages, userMessage];
 
-      const prompt = `Você é o Marcos, um empresário experiente de ${getSegmentName(user.business_segment || 'comércio')} que mentora outros empresários. Você fala de forma direta, sem enrolação, como um amigo que quer ajudar.
-
-${businessContext}
-
-📊 **DADOS FINANCEIROS (MÊS ATUAL):**
-- Receitas: R$ ${financialContext.summary.currentMonthIncome.toLocaleString('pt-BR')}
-- Despesas: R$ ${financialContext.summary.currentMonthExpense.toLocaleString('pt-BR')}
-- Saldo: R$ ${financialContext.summary.currentMonthBalance.toLocaleString('pt-BR')}
-
-💰 **TOP 3 MAIORES DESPESAS:**
-${Object.entries(financialContext.expensesByCategory)
-  .sort((a, b) => b[1] - a[1])
-  .slice(0, 3)
-  .map(([cat, amount], i) => `${i+1}. ${cat.replace(/_/g, ' ')}: R$ ${amount.toLocaleString('pt-BR')}`)
-  .join('\n')}
-
-📈 **TENDÊNCIA (3 MESES):**
-${financialContext.monthlyTrends.map(m => 
-  `- ${m.month}: Saldo R$ ${m.balance.toLocaleString('pt-BR')}`
-).join('\n')}
-
----
-
-**REGRAS PARA SUA RESPOSTA:**
-
-1. **SEJA DIRETO**: Vá direto ao ponto, sem textão
-2. **USE TÓPICOS**: Organize tudo em bullet points
-3. **NÚMEROS REAIS**: Sempre cite valores específicos dos dados acima
-4. **AÇÕES PRÁTICAS**: Dê no máximo 3 ações que ele pode fazer HOJE
-5. **TOM PRÓXIMO**: Fale como se fosse um amigo dando conselho no bar
-6. **ESPECÍFICO PRO SEGMENTO**: Adapte exemplos pro segmento dele (${getSegmentName(user.business_segment || 'comércio')})
-
-**FORMATO OBRIGATÓRIO:**
-
-🎯 **RESPOSTA DIRETA**
-[Responda em 1 linha]
-
-📊 **O QUE VI NOS SEUS DADOS**
-• [Insight 1 com número]
-• [Insight 2 com número]
-
-💡 **FAÇA HOJE**
-1. [Ação específica com valor estimado]
-2. [Ação específica com valor estimado]
-3. [Ação específica com valor estimado]
-
-❓ **[Pergunta para aprofundar o tema]**
-
----
-
-**EXEMPLOS DE BOM E RUIM:**
-
-❌ RUIM: "Você deve considerar a otimização dos seus custos operacionais"
-✅ BOM: "Seus R$ 8.500 em fornecedores estão altos. Ligue pra 3 deles hoje e peça 10% de desconto - economiza R$ 850/mês"
-
-❌ RUIM: "Analise suas receitas"
-✅ BOM: "Suas vendas caíram 15% vs mês passado (de R$ 45k pra R$ 38k). Faça uma promoção esta semana pra recuperar"
-
-**Pergunta do empresário:** ${messageText}
-
-**Sua resposta como Marcos (empresário experiente):**`;
-
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: prompt,
-        add_context_from_internet: false
+      const response = await base44.functions.invoke('chatGPT', {
+        messages: conversationMessages,
+        financialData: financialData,
+        businessContext: businessContext
       });
 
-      const aiMessage = { 
-        text: result || "Desculpe, não consegui processar sua pergunta. Tenta reformular?", 
-        isUser: false 
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
+
+      const assistantMessage = {
+        role: "assistant",
+        content: response.data.response,
       };
-      
-      setMessages(prev => [...prev, aiMessage]);
+
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("Erro ao processar mensagem:", error);
+      console.error('Error sending message:', error);
       
-      const errorMessage = { 
-        text: "Ops, deu um problema aqui. Tenta de novo?", 
-        isUser: false 
+      const errorMessage = {
+        role: "assistant",
+        content: `❌ Desculpe, ocorreu um erro: ${error.message}. Por favor, tente novamente.`,
       };
       
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const handleSaveContext = async (contextData) => {
+    try {
+      await updateUserMutation.mutateAsync(contextData);
+      setShowContextDialog(false);
+      
+      const welcomeMessage = {
+        role: "assistant",
+        content: `Ótimo, ${contextData.business_name}! 🎉
+
+Agora que conheço seu negócio, posso te ajudar de forma muito mais precisa. Estou aqui para:
+
+💰 **Ajudar com seu fluxo de caixa**
+📊 **Analisar suas finanças**
+💡 **Dar dicas personalizadas para seu segmento**
+📈 **Sugerir estratégias de crescimento**
+🎯 **Resolver seus desafios específicos**
+
+Como posso te ajudar hoje?`,
+      };
+      
+      setMessages([welcomeMessage]);
+    } catch (error) {
+      console.error('Error saving context:', error);
     }
   };
 
+  if (loadingUser || loadingTransactions || loadingRecurring) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 md:p-8 h-[calc(100vh-4rem)] flex flex-col">
-      {/* Header */}
-      <div className="mb-3">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <Brain className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col max-w-5xl mx-auto w-full p-4 md:p-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-4 border-2 border-purple-100">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 flex-1">
+              <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                <Brain className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-2xl font-bold text-slate-900">Assistente Financeiro IA</h1>
+                  <div className="flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 rounded-full">
+                    <Zap className="w-3 h-3 text-purple-600" />
+                    <span className="text-xs font-semibold text-purple-700">GPT-4o</span>
+                  </div>
+                </div>
+                <p className="text-slate-600 text-sm">
+                  {hasBusinessContext 
+                    ? `Olá! Estou aqui para ajudar o ${user.business_name} a crescer! 🚀`
+                    : "Seu consultor financeiro pessoal, disponível 24/7"
+                  }
+                </p>
+              </div>
+            </div>
+            {hasBusinessContext && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowContextDialog(true)}
+                className="flex-shrink-0"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Atualizar Contexto
+              </Button>
+            )}
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">
-              Assistente Financeiro IA
-            </h1>
-            <p className="text-slate-600">
-              {user?.business_name ? `Consultoria para ${user.business_name}` : 'Seu consultor financeiro pessoal'}
-            </p>
+        </div>
+
+        {/* Alerts */}
+        {!hasBusinessContext && messages.length > 0 && (
+          <Alert className="mb-4 border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-900">
+              <strong>💡 Dica:</strong> Configure o contexto do seu negócio para receber conselhos mais personalizados!
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setShowContextDialog(true)}
+                className="text-orange-700 hover:text-orange-900 p-0 h-auto ml-2"
+              >
+                Configurar agora →
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {transactions.length === 0 && (
+          <Alert className="mb-4 border-blue-200 bg-blue-50">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-900">
+              <strong>📊 Adicione transações</strong> para que eu possa analisar seus dados financeiros e dar conselhos mais precisos!
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Chat Area */}
+        <div className="flex-1 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border-2 border-purple-100">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center">
+                  <Sparkles className="w-10 h-10 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                    Como posso te ajudar hoje?
+                  </h2>
+                  <p className="text-slate-600 max-w-md">
+                    Faça perguntas sobre gestão financeira, fluxo de caixa, ou peça análises do seu negócio!
+                  </p>
+                </div>
+                
+                <div className="w-full max-w-2xl">
+                  <SuggestedQuestions onSelectQuestion={handleSendMessage} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mt-8">
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center mb-3">
+                      <Brain className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Inteligente</h3>
+                    <p className="text-sm text-slate-600">
+                      Powered by GPT-4o da OpenAI, o modelo mais avançado
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mb-3">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Personalizado</h3>
+                    <p className="text-sm text-slate-600">
+                      Analisa seus dados financeiros reais
+                    </p>
+                  </div>
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                    <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center mb-3">
+                      <Zap className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-slate-900 mb-1">Disponível 24/7</h3>
+                    <p className="text-sm text-slate-600">
+                      Consultor financeiro sempre à disposição
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {messages.map((message, index) => (
+                  <ChatMessage key={index} message={message} />
+                ))}
+                {isLoading && (
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Brain className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4">
+                      <div className="flex gap-2">
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
+
+          {/* Input Area */}
+          <div className="border-t border-slate-200 p-4 bg-slate-50">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
+              }}
+              className="flex gap-2"
+            >
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Digite sua pergunta..."
+                disabled={isLoading}
+                className="flex-1 bg-white border-slate-300 focus:border-purple-500 focus:ring-purple-500"
+              />
+              <Button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-6"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Enviar
+                  </>
+                )}
+              </Button>
+            </form>
           </div>
         </div>
       </div>
 
-      {/* Benefícios - ultra compactos */}
-      {messages.length === 0 && !user?.business_context_collected && (
-        <div className="mb-4">
-          <Alert className="border-blue-200 bg-blue-50">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-900 text-sm">
-              <strong>Primeira vez aqui?</strong> Vou te fazer 4 perguntas rápidas sobre seu negócio para dar conselhos ultra direcionados! 🎯
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      {messages.length === 0 && user?.business_context_collected && (
-        <div className="mb-4">
-          <div className="flex items-center justify-center gap-6 mb-3 p-2 bg-slate-50 rounded-lg">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-              <span className="text-xs font-medium text-slate-700">Respostas Diretas</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-              <span className="text-xs font-medium text-slate-700">Ações Práticas</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-green-600" />
-              <span className="text-xs font-medium text-slate-700">100% Privado</span>
-            </div>
-          </div>
-
-          {transactions.length === 0 && (
-            <Alert className="border-orange-200 bg-orange-50">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-900 text-sm">
-                <strong>Dica:</strong> Adicione transações para obter conselhos mais precisos com base nos seus números reais.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-      )}
-
-      {/* Área de mensagens */}
-      <Card className="flex-1 flex flex-col border-0 shadow-lg overflow-hidden">
-        <CardContent className="flex-1 overflow-y-auto p-6">
-          {messages.length === 0 && user?.business_context_collected ? (
-            <div className="h-full flex flex-col justify-center">
-              <SuggestedQuestions onSelectQuestion={handleSendMessage} />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {messages.map((message, index) => (
-                <div key={index}>
-                  <ChatMessage
-                    message={message.text}
-                    isUser={message.isUser}
-                  />
-                  {message.showContextButton && (
-                    <div className="flex justify-center mt-4">
-                      <Button
-                        onClick={() => setShowContextDialog(true)}
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                      >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Vamos lá! Cadastrar meu negócio
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                    <Brain className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 inline-block">
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Analisando seus dados...</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </CardContent>
-
-        {/* Input de mensagem */}
-        <div className="border-t border-slate-200 p-4 bg-slate-50">
-          <div className="flex gap-3">
-            <Textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ex: Como reduzo custos? Minhas vendas estão boas?"
-              className="resize-none bg-white"
-              rows={2}
-              disabled={isLoading}
-            />
-            <Button
-              onClick={() => handleSendMessage()}
-              disabled={!inputValue.trim() || isLoading}
-              className="bg-purple-600 hover:bg-purple-700 px-6"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </Button>
-          </div>
-          <p className="text-xs text-slate-500 mt-2">
-            Pressione Enter para enviar • Shift + Enter para nova linha
-          </p>
-        </div>
-      </Card>
-
-      {/* Dialog de contexto do negócio */}
+      {/* Business Context Dialog */}
       <BusinessContextDialog
         open={showContextDialog}
         onClose={() => setShowContextDialog(false)}
-        onSave={handleContextSaved}
+        onSave={handleSaveContext}
         user={user}
       />
     </div>
