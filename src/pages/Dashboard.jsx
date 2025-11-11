@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Calendar, TrendingUp, BarChart3 } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, startOfDay, endOfDay, startOfYear, endOfYear, subYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +51,31 @@ export default function Dashboard() {
 
   const monthOptions = useMemo(() => {
     const options = [];
+    
+    // Adiciona anos completos (últimos 5 anos)
+    const currentYear = new Date().getFullYear();
+    for (let i = 0; i < 5; i++) {
+      const year = currentYear - i;
+      options.push({
+        value: `year_${year}`,
+        label: `📅 Ano Completo ${year}`,
+        shortLabel: `${year}`,
+        date: null,
+        isYear: true,
+        year: year
+      });
+    }
+    
+    // Adiciona separador visual
+    options.push({
+      value: 'separator_1',
+      label: '───────────────',
+      shortLabel: '───',
+      date: null,
+      disabled: true
+    });
+    
+    // Adiciona meses individuais
     for (let i = 0; i < 12; i++) {
       const date = subMonths(new Date(), i);
       options.push({
@@ -61,12 +85,24 @@ export default function Dashboard() {
         date: date
       });
     }
+    
+    // Adiciona separador visual
+    options.push({
+      value: 'separator_2',
+      label: '───────────────',
+      shortLabel: '───',
+      date: null,
+      disabled: true
+    });
+    
+    // Adiciona opção personalizada
     options.push({
       value: 'custom',
-      label: 'Personalizar período...',
+      label: '🎯 Personalizar período...',
       shortLabel: 'Personalizado',
       date: null
     });
+    
     return options;
   }, []);
 
@@ -86,7 +122,13 @@ export default function Dashboard() {
     if (customPeriod) {
       start = startOfDay(new Date(customPeriod.startDate));
       end = endOfDay(new Date(customPeriod.endDate));
+    } else if (selectedMonth.startsWith('year_')) {
+      // Filtro de ano completo
+      const year = parseInt(selectedMonth.replace('year_', ''));
+      start = startOfYear(new Date(year, 0, 1));
+      end = endOfYear(new Date(year, 11, 31));
     } else {
+      // Filtro de mês individual
       const monthsBack = parseInt(selectedMonth);
       const selectedDate = subMonths(new Date(), monthsBack);
       start = startOfMonth(selectedDate);
@@ -139,6 +181,10 @@ export default function Dashboard() {
       const startFormatted = format(periodStart, "MMM/yy", { locale: ptBR });
       const endFormatted = format(periodEnd, "MMM/yy", { locale: ptBR });
       label = startFormatted === endFormatted ? startFormatted : `${startFormatted} a ${endFormatted}`;
+    } else if (selectedMonth.startsWith('year_')) {
+      // Label para ano completo
+      const year = selectedMonth.replace('year_', '');
+      label = `Ano ${year}`;
     } else {
       label = format(periodStart, "MMM/yy", { locale: ptBR });
     }
@@ -148,7 +194,7 @@ export default function Dashboard() {
       finalBalance: final,
       periodLabel: label
     };
-  }, [transactions, selectedAccount, periodStart, periodEnd, customPeriod]);
+  }, [transactions, selectedAccount, periodStart, periodEnd, customPeriod, selectedMonth]);
 
   const monthStats = useMemo(() => {
     const income = filteredTransactions
@@ -173,6 +219,9 @@ export default function Dashboard() {
   const handleMonthChange = (value) => {
     if (value === 'custom') {
       setCustomDialogOpen(true);
+    } else if (value.startsWith('separator_')) {
+      // Ignora cliques nos separadores
+      return;
     } else {
       setCustomPeriod(null);
       setSelectedMonth(value);
@@ -239,7 +288,12 @@ export default function Dashboard() {
               </SelectTrigger>
               <SelectContent>
                 {monthOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
+                  <SelectItem 
+                    key={option.value} 
+                    value={option.value}
+                    disabled={option.disabled}
+                    className={option.disabled ? 'text-slate-300 cursor-default' : ''}
+                  >
                     {option.label}
                   </SelectItem>
                 ))}
