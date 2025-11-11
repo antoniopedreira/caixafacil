@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,14 @@ import SuggestedQuestions from "../components/ai/SuggestedQuestions";
 import BusinessContextDialog from "../components/ai/BusinessContextDialog";
 import FlavioAvatar from "../components/ai/FlavioAvatar";
 import AvatarSelector from "../components/ai/AvatarSelector";
+
+// Define a mapping for avatar IDs to names
+// This can be expanded as more avatars are added
+const FLAVIO_AVATARS = {
+  'avatar1': { name: 'Flávio' },
+  'avatar2': { name: 'Flávia' }, // Example for another avatar that might be 'Flávia'
+  // Add more avatars here if they have different names
+};
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([]);
@@ -84,6 +93,11 @@ export default function AIAssistant() {
   const selectedAvatar = useMemo(() => {
     return user?.flavio_avatar || 'avatar1';
   }, [user]);
+
+  const consultorName = useMemo(() => {
+    const avatar = FLAVIO_AVATARS[selectedAvatar];
+    return avatar?.name || 'Flávio'; // Default to 'Flávio' if avatarId not found
+  }, [selectedAvatar]);
 
   // Análise financeira avançada
   const financialData = useMemo(() => {
@@ -297,11 +311,11 @@ export default function AIAssistant() {
       
       const welcomeMessage = {
         role: "assistant",
-        content: `E aí! Prazer, sou o Flávio! 👋
+        content: `E aí! Prazer, sou ${consultorName === 'Flávia' ? 'a' : 'o'} ${consultorName}! 👋
 
-Fiquei muito feliz em conhecer o ${contextData.business_name}! ${contextData.business_segment ? `Já trabalhei com vários negócios no ramo de ${contextData.business_segment}, então conheço bem os desafios do dia a dia.` : ''}
+Fiquei muito ${consultorName === 'Flávia' ? 'feliz' : 'feliz'} em conhecer o ${contextData.business_name}! ${contextData.business_segment ? `Já trabalhei com vários negócios no ramo de ${contextData.business_segment}, então conheço bem os desafios do dia a dia.` : ''}
 
-Olha, vou ser direto: não sou apenas um assistente que responde perguntas. Sou seu **consultor financeiro pessoal**. Tá mais para ter um parceiro de negócios que olha seus números com você do que um robô automático.
+Olha, vou ser ${consultorName === 'Flávia' ? 'direta' : 'direto'}: não sou apenas ${consultorName === 'Flávia' ? 'uma assistente' : 'um assistente'} que responde perguntas. Sou ${consultorName === 'Flávia' ? 'sua consultora financeira pessoal' : 'seu consultor financeiro pessoal'}. Tá mais para ter ${consultorName === 'Flávia' ? 'uma parceira' : 'um parceiro'} de negócios que olha seus números com você do que um robô automático.
 
 **O que eu faço por você:**
 
@@ -399,16 +413,16 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
               <FlavioAvatar avatarId={selectedAvatar} size="md" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg font-bold text-slate-900">Flávio</h1>
+                  <h1 className="text-lg font-bold text-slate-900">{consultorName}</h1>
                   <div className="flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 px-2 py-0.5 rounded-full">
                     <Zap className="w-3 h-3 text-purple-600" />
-                    <span className="text-xs font-semibold text-purple-700">Consultor IA</span>
+                    <span className="text-xs font-semibold text-purple-700">Consultor{consultorName === 'Flávia' ? 'a' : ''} IA</span>
                   </div>
                 </div>
                 <p className="text-xs text-slate-600 truncate">
                   {hasBusinessContext 
                     ? `${user.business_name} 🚀`
-                    : "Seu consultor financeiro pessoal"
+                    : `${consultorName === 'Flávia' ? 'Sua consultora financeira pessoal' : 'Seu consultor financeiro pessoal'}`
                   }
                 </p>
               </div>
@@ -419,7 +433,7 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                 size="sm"
                 onClick={() => setShowAvatarSelector(true)}
                 className="gap-1.5 h-8 text-xs"
-                title="Trocar avatar do Flávio"
+                title={`Trocar avatar ${consultorName === 'Flávia' ? 'da' : 'do'} ${consultorName}`}
               >
                 <Palette className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Avatar</span>
@@ -509,10 +523,10 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                 </div>
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-3">
-                    E aí! Sou o Flávio 👋
+                    E aí! Sou {consultorName === 'Flávia' ? 'a' : 'o'} {consultorName} 👋
                   </h2>
                   <p className="text-slate-600 max-w-lg text-lg">
-                    Seu consultor financeiro pessoal. Bora analisar suas finanças, encontrar oportunidades e fazer planos práticos?
+                    {consultorName === 'Flávia' ? 'Sua consultora financeira pessoal' : 'Seu consultor financeiro pessoal'}. Bora analisar suas finanças, encontrar oportunidades e fazer planos práticos?
                   </p>
                 </div>
                 
@@ -534,7 +548,7 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        <span className="text-xs text-slate-500 ml-2">Flávio está analisando...</span>
+                        <span className="text-xs text-slate-500 ml-2">{consultorName} está analisando...</span>
                       </div>
                     </div>
                   </div>
@@ -555,7 +569,7 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                   className="w-full gap-2 bg-white hover:bg-purple-50 border-purple-200 shadow-sm"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Nova Conversa com o Flávio
+                  Nova Conversa com {consultorName === 'Flávia' ? 'a' : 'o'} {consultorName}
                 </Button>
               </div>
             )}

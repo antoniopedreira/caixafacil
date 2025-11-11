@@ -1,27 +1,54 @@
 import React from 'react';
 
-// Opções de avatares do Flávio
+// Opções de avatares do consultor
 export const FLAVIO_AVATARS = {
   avatar1: {
     id: 'avatar1',
-    name: 'Flávio 1',
+    name: 'Flávio',
+    gender: 'male',
     emoji: '👨‍💼',
     description: 'Profissional clássico',
     gradient: 'from-blue-600 to-indigo-600'
   },
   avatar2: {
     id: 'avatar2',
-    name: 'Flávio 2',
+    name: 'Flávio',
+    gender: 'male',
     emoji: '👨🏾‍💼',
     description: 'Consultor experiente',
     gradient: 'from-purple-600 to-pink-600'
   },
   avatar3: {
     id: 'avatar3',
-    name: 'Flávio 3',
+    name: 'Flávio',
+    gender: 'male',
     emoji: '👨🏻‍💼',
     description: 'Estrategista financeiro',
     gradient: 'from-emerald-600 to-teal-600'
+  },
+  avatar4: {
+    id: 'avatar4',
+    name: 'Flávia',
+    gender: 'female',
+    emoji: '👩‍💼',
+    description: 'Profissional clássica',
+    gradient: 'from-rose-600 to-pink-600'
+  },
+  avatar5: {
+    id: 'avatar5',
+    name: 'Flávia',
+    gender: 'female',
+    emoji: '👩🏾‍💼',
+    description: 'Consultora experiente',
+    gradient: 'from-orange-600 to-amber-600'
+  },
+  avatar6: {
+    id: 'avatar6',
+    name: 'Flávia',
+    gender: 'female',
+    emoji: '👩🏻‍💼',
+    description: 'Estrategista financeira',
+    gradient: 'from-violet-600 to-purple-600'
   }
 };
 
