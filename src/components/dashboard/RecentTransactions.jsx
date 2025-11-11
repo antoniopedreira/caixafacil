@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import TransactionDetailModal from './TransactionDetailModal';
 
-// Função para formatar valor com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
     minimumFractionDigits: 2,
@@ -16,23 +15,31 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-// Função para abreviar e formatar descrição
+// Função aprimorada para formatar descrição - remove prefixos longos
 const formatDescription = (description, maxWords = 4) => {
   if (!description) return '';
   
   const toTitleCase = (str) => {
     return str.toLowerCase().split(' ').map(word => {
-      if (['de', 'da', 'do', 'e', 'a', 'o', 'das', 'dos'].includes(word.toLowerCase())) {
+      if (['de', 'da', 'do', 'e', 'a', 'o', 'das', 'dos', 'para'].includes(word.toLowerCase())) {
         return word.toLowerCase();
       }
       return word.charAt(0).toUpperCase() + word.slice(1);
     }).join(' ');
   };
   
-  // Remove frases como "recebido de", "enviado para", etc
+  // Remove frases longas e mantém apenas o essencial
   let cleaned = description
+    // Remove "Pix recebido de" ou "Pix enviado para"
+    .replace(/pix\s+(recebido\s+de|enviado\s+para)\s+/gi, 'Pix ')
+    // Remove "TED recebido de" ou "TED enviado para"
+    .replace(/ted\s+(recebido\s+de|enviado\s+para)\s+/gi, 'TED ')
+    // Remove "Transferência recebida de" ou "Transferência enviada para"
+    .replace(/transfer[eê]ncia\s+(recebida\s+de|enviada\s+para)\s+/gi, 'Transferência ')
+    // Remove outros padrões comuns
     .replace(/recebido\s+de\s+/gi, '')
     .replace(/enviado\s+para\s+/gi, '')
+    .replace(/pagamento\s+(de|para)\s+/gi, '')
     .replace(/recebido\s+/gi, '')
     .replace(/enviado\s+/gi, '')
     .trim();
@@ -135,7 +142,6 @@ export default function RecentTransactions({ transactions }) {
         </CardContent>
       </Card>
 
-      {/* Modal de detalhes */}
       <TransactionDetailModal
         transaction={selectedTransaction}
         allTransactions={transactions}

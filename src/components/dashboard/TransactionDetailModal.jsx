@@ -8,7 +8,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingUp, TrendingDown, Calendar, Receipt, DollarSign, Tag, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Calendar, Receipt, DollarSign, Tag, ArrowUpCircle, ArrowDownCircle, X } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -123,212 +124,226 @@ export default function TransactionDetailModal({ transaction, allTransactions, o
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-slate-600" />
-            Detalhes da Transação
-          </DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+        {/* Header fixo */}
+        <DialogHeader className="px-6 py-4 border-b border-slate-200 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-slate-600" />
+              Detalhes da Transação
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 rounded-full hover:bg-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Dados da transação atual */}
-          <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-4 border border-slate-200">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  Data
-                </p>
-                <p className="font-semibold text-slate-900">
-                  {format(new Date(transaction.date), "dd/MM/yyyy", { locale: ptBR })}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                  <DollarSign className="w-3 h-3" />
-                  Valor
-                </p>
-                <p className={`font-bold text-lg ${
-                  transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                }`}>
-                  {formatCurrency(Math.abs(transaction.amount))}
-                </p>
-              </div>
-
-              <div className="col-span-2">
-                <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                  <Receipt className="w-3 h-3" />
-                  Descrição
-                </p>
-                <p className="font-medium text-slate-900">
-                  {transaction.description}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                  <Tag className="w-3 h-3" />
-                  Categoria
-                </p>
-                <Badge variant="outline" className="mt-1">
-                  {CATEGORY_NAMES[transaction.category] || transaction.category}
-                </Badge>
-              </div>
-
-              {transaction.payment_method && (
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-6">
+            {/* Dados da transação atual */}
+            <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-4 border border-slate-200">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Forma de Pagamento</p>
-                  <p className="font-medium text-slate-700 text-sm capitalize">
-                    {transaction.payment_method.replace(/_/g, ' ')}
+                  <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    Data
+                  </p>
+                  <p className="font-semibold text-slate-900">
+                    {format(new Date(transaction.date), "dd/MM/yyyy", { locale: ptBR })}
                   </p>
                 </div>
-              )}
 
-              {transaction.notes && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" />
+                    Valor
+                  </p>
+                  <p className={`font-bold text-lg ${
+                    transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                  }`}>
+                    {formatCurrency(Math.abs(transaction.amount))}
+                  </p>
+                </div>
+
                 <div className="col-span-2">
-                  <p className="text-xs text-slate-500 mb-1">Observações</p>
-                  <p className="text-sm text-slate-600 italic">
-                    {transaction.notes}
+                  <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    <Receipt className="w-3 h-3" />
+                    Descrição
+                  </p>
+                  <p className="font-medium text-slate-900">
+                    {transaction.description}
                   </p>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Histórico */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                📊 Histórico deste Favorecido
-              </h3>
-              {variation && (
-                <Badge className={variation.isIncrease ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}>
-                  {variation.isIncrease ? (
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 mr-1" />
-                  )}
-                  {variation.isIncrease ? '+' : ''}{variation.percent.toFixed(1)}% vs mês anterior
-                </Badge>
-              )}
-            </div>
-
-            {history.length > 0 ? (
-              <>
-                {/* Linha do tempo visual */}
-                <div className="space-y-2">
-                  {history.map((item, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
-                        item.isCurrent
-                          ? 'bg-blue-50 border-2 border-blue-500'
-                          : 'bg-slate-50 border border-slate-200'
-                      }`}
-                    >
-                      <div className="w-20 text-sm font-semibold text-slate-700">
-                        {item.month}
-                        {item.isCurrent && (
-                          <span className="block text-xs text-blue-600 font-medium">atual</span>
-                        )}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
-                            style={{
-                              width: `${history.length > 0 ? (item.total / Math.max(...history.map(h => h.total))) * 100 : 0}%`,
-                              minWidth: item.total > 0 ? '20px' : '0px'
-                            }}
-                          />
-                          <span className="text-sm font-bold text-slate-900 whitespace-nowrap">
-                            {formatCurrency(item.total)}
-                          </span>
-                        </div>
-                        {item.count > 1 && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            {item.count} transações
-                          </p>
-                        )}
-                      </div>
-
-                      {index < history.length - 1 && (
-                        <div className="text-xs text-slate-400">
-                          {(() => {
-                            const current = history[index];
-                            const previous = history[index + 1];
-                            if (!current || !previous || previous.total === 0) return null;
-
-                            const change = current.total - previous.total;
-                            const percent = (change / previous.total) * 100;
-
-                            if (Math.abs(percent) < 1) return '→';
-
-                            return change > 0 ? (
-                              <span className="text-rose-600 flex items-center gap-0.5">
-                                <ArrowUpCircle className="w-3 h-3" />
-                                +{percent.toFixed(0)}%
-                              </span>
-                            ) : (
-                              <span className="text-emerald-600 flex items-center gap-0.5">
-                                <ArrowDownCircle className="w-3 h-3" />
-                                {percent.toFixed(0)}%
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div>
+                  <p className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    <Tag className="w-3 h-3" />
+                    Categoria
+                  </p>
+                  <Badge variant="outline" className="mt-1">
+                    {CATEGORY_NAMES[transaction.category] || transaction.category}
+                  </Badge>
                 </div>
 
-                {/* Resumo */}
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-blue-700 mb-1">Média (meses com gasto)</p>
-                      <p className="font-bold text-blue-900 text-lg">
-                        {formatCurrency(average)}
-                      </p>
-                      <p className="text-xs text-blue-600 mt-1">
-                        {history.filter(h => h.total > 0).length} meses considerados
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-blue-700 mb-1">Total (6 meses)</p>
-                      <p className="font-bold text-blue-900 text-lg">
-                        {formatCurrency(history.reduce((sum, h) => sum + h.total, 0))}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Insights */}
-                  <div className="mt-3 pt-3 border-t border-blue-200">
-                    <p className="text-xs font-semibold text-blue-900 mb-1">💡 Insight:</p>
-                    <p className="text-xs text-blue-800">
-                      {(() => {
-                        if (!variation) return 'Primeira transação com este favorecido.';
-                        
-                        if (Math.abs(variation.percent) < 5) {
-                          return 'Valor estável nos últimos meses.';
-                        } else if (variation.isIncrease) {
-                          return `${transaction.type === 'expense' ? 'Despesa' : 'Receita'} aumentou ${variation.percent.toFixed(0)}% vs mês passado. ${transaction.type === 'expense' ? 'Considere renegociar.' : 'Ótimo crescimento!'}`;
-                        } else {
-                          return `${transaction.type === 'expense' ? 'Despesa' : 'Receita'} diminuiu ${Math.abs(variation.percent).toFixed(0)}% vs mês passado. ${transaction.type === 'expense' ? 'Boa economia!' : 'Atenção à queda.'}`;
-                        }
-                      })()}
+                {transaction.payment_method && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Forma de Pagamento</p>
+                    <p className="font-medium text-slate-700 text-sm capitalize">
+                      {transaction.payment_method.replace(/_/g, ' ')}
                     </p>
                   </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8 text-slate-500">
-                <p className="text-sm">Nenhum histórico encontrado para este favorecido.</p>
+                )}
+
+                {transaction.notes && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-500 mb-1">Observações</p>
+                    <p className="text-sm text-slate-600 italic">
+                      {transaction.notes}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Histórico */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                  📊 Histórico deste Favorecido
+                </h3>
+                {variation && (
+                  <Badge className={variation.isIncrease ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}>
+                    {variation.isIncrease ? (
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3 mr-1" />
+                    )}
+                    {variation.isIncrease ? '+' : ''}{variation.percent.toFixed(1)}% vs mês anterior
+                  </Badge>
+                )}
+              </div>
+
+              {history.length > 0 ? (
+                <>
+                  {/* Linha do tempo visual */}
+                  <div className="space-y-2">
+                    {history.map((item, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
+                          item.isCurrent
+                            ? 'bg-blue-50 border-2 border-blue-500'
+                            : 'bg-slate-50 border border-slate-200'
+                        }`}
+                      >
+                        <div className="w-20 text-sm font-semibold text-slate-700">
+                          {item.month}
+                          {item.isCurrent && (
+                            <span className="block text-xs text-blue-600 font-medium">atual</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
+                              style={{
+                                width: `${history.length > 0 ? (item.total / Math.max(...history.map(h => h.total))) * 100 : 0}%`,
+                                minWidth: item.total > 0 ? '20px' : '0px'
+                              }}
+                            />
+                            <span className="text-sm font-bold text-slate-900 whitespace-nowrap">
+                              {formatCurrency(item.total)}
+                            </span>
+                          </div>
+                          {item.count > 1 && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              {item.count} transações
+                            </p>
+                          )}
+                        </div>
+
+                        {index < history.length - 1 && (
+                          <div className="text-xs text-slate-400">
+                            {(() => {
+                              const current = history[index];
+                              const previous = history[index + 1];
+                              if (!current || !previous || previous.total === 0) return null;
+
+                              const change = current.total - previous.total;
+                              const percent = (change / previous.total) * 100;
+
+                              if (Math.abs(percent) < 1) return '→';
+
+                              return change > 0 ? (
+                                <span className="text-rose-600 flex items-center gap-0.5">
+                                  <ArrowUpCircle className="w-3 h-3" />
+                                  +{percent.toFixed(0)}%
+                                </span>
+                              ) : (
+                                <span className="text-emerald-600 flex items-center gap-0.5">
+                                  <ArrowDownCircle className="w-3 h-3" />
+                                  {percent.toFixed(0)}%
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Resumo */}
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-blue-700 mb-1">Média (meses com gasto)</p>
+                        <p className="font-bold text-blue-900 text-lg">
+                          {formatCurrency(average)}
+                        </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          {history.filter(h => h.total > 0).length} meses considerados
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-blue-700 mb-1">Total (6 meses)</p>
+                        <p className="font-bold text-blue-900 text-lg">
+                          {formatCurrency(history.reduce((sum, h) => sum + h.total, 0))}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Insights */}
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <p className="text-xs font-semibold text-blue-900 mb-1">💡 Insight:</p>
+                      <p className="text-xs text-blue-800">
+                        {(() => {
+                          if (!variation) return 'Primeira transação com este favorecido.';
+                          
+                          if (Math.abs(variation.percent) < 5) {
+                            return 'Valor estável nos últimos meses.';
+                          } else if (variation.isIncrease) {
+                            return `${transaction.type === 'expense' ? 'Despesa' : 'Receita'} aumentou ${variation.percent.toFixed(0)}% vs mês passado. ${transaction.type === 'expense' ? 'Considere renegociar.' : 'Ótimo crescimento!'}`;
+                          } else {
+                            return `${transaction.type === 'expense' ? 'Despesa' : 'Receita'} diminuiu ${Math.abs(variation.percent).toFixed(0)}% vs mês passado. ${transaction.type === 'expense' ? 'Boa economia!' : 'Atenção à queda.'}`;
+                          }
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <p className="text-sm">Nenhum histórico encontrado para este favorecido.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>

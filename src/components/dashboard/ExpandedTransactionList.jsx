@@ -29,16 +29,14 @@ const CATEGORY_NAMES = {
 function normalizeDescription(text) {
   if (!text) return 'Sem descrição';
   
-  // Remove frases como "recebido de", "enviado para", "pix enviado", etc
+  // Remove frases longas e mantém apenas o essencial
   let cleaned = text
-    .replace(/pix\s+enviado\s+para\s+/gi, '')
-    .replace(/pix\s+recebido\s+de\s+/gi, '')
-    .replace(/ted\s+enviado\s+para\s+/gi, '')
-    .replace(/ted\s+recebido\s+de\s+/gi, '')
-    .replace(/transferencia\s+enviado\s+para\s+/gi, '')
-    .replace(/transferencia\s+recebido\s+de\s+/gi, '')
+    .replace(/pix\s+(recebido\s+de|enviado\s+para)\s+/gi, 'Pix ')
+    .replace(/ted\s+(recebido\s+de|enviado\s+para)\s+/gi, 'TED ')
+    .replace(/transfer[eê]ncia\s+(recebida\s+de|enviada\s+para)\s+/gi, 'Transferência ')
     .replace(/recebido\s+de\s+/gi, '')
     .replace(/enviado\s+para\s+/gi, '')
+    .replace(/pagamento\s+(de|para)\s+/gi, '')
     .replace(/recebido\s+/gi, '')
     .replace(/enviado\s+/gi, '')
     .trim();
@@ -65,7 +63,19 @@ function formatDescription(text, maxWords = 4) {
     }).join(' ');
   };
   
-  const words = text.split(' ').filter(w => w.length > 0);
+  // Remove prefixos longos primeiro
+  let cleaned = text
+    .replace(/pix\s+(recebido\s+de|enviado\s+para)\s+/gi, 'Pix ')
+    .replace(/ted\s+(recebido\s+de|enviado\s+para)\s+/gi, 'TED ')
+    .replace(/transfer[eê]ncia\s+(recebida\s+de|enviada\s+para)\s+/gi, 'Transferência ')
+    .replace(/recebido\s+de\s+/gi, '')
+    .replace(/enviado\s+para\s+/gi, '')
+    .replace(/pagamento\s+(de|para)\s+/gi, '')
+    .replace(/recebido\s+/gi, '')
+    .replace(/enviado\s+/gi, '')
+    .trim();
+  
+  const words = cleaned.split(' ').filter(w => w.length > 0);
   const abbreviated = words.slice(0, maxWords).join(' ');
   
   return toTitleCase(abbreviated);
@@ -263,7 +273,6 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
         </div>
       </div>
 
-      {/* Modal de detalhes */}
       <TransactionDetailModal
         transaction={selectedTransaction}
         allTransactions={allTransactions || transactions}
