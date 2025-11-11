@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Search, Check } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, Search, Check, X } from "lucide-react";
 import {
   Command,
   CommandEmpty,
@@ -127,17 +129,51 @@ const BUSINESS_SEGMENTS = [
   { value: "outros", label: "📦 Outros" },
 ].sort((a, b) => a.label.localeCompare(b.label));
 
+const BRAZILIAN_STATES = [
+  { value: "AC", label: "Acre" },
+  { value: "AL", label: "Alagoas" },
+  { value: "AP", label: "Amapá" },
+  { value: "AM", label: "Amazonas" },
+  { value: "BA", label: "Bahia" },
+  { value: "CE", label: "Ceará" },
+  { value: "DF", label: "Distrito Federal" },
+  { value: "ES", label: "Espírito Santo" },
+  { value: "GO", label: "Goiás" },
+  { value: "MA", label: "Maranhão" },
+  { value: "MT", label: "Mato Grosso" },
+  { value: "MS", label: "Mato Grosso do Sul" },
+  { value: "MG", label: "Minas Gerais" },
+  { value: "PA", label: "Pará" },
+  { value: "PB", label: "Paraíba" },
+  { value: "PR", label: "Paraná" },
+  { value: "PE", label: "Pernambuco" },
+  { value: "PI", label: "Piauí" },
+  { value: "RJ", label: "Rio de Janeiro" },
+  { value: "RN", label: "Rio Grande do Norte" },
+  { value: "RS", label: "Rio Grande do Sul" },
+  { value: "RO", label: "Rondônia" },
+  { value: "RR", label: "Roraima" },
+  { value: "SC", label: "Santa Catarina" },
+  { value: "SP", label: "São Paulo" },
+  { value: "SE", label: "Sergipe" },
+  { value: "TO", label: "Tocantins" },
+];
+
 export default function BusinessContextDialog({ open, onClose, onSave, user }) {
   const [formData, setFormData] = useState({
     business_segment: user?.business_segment || '',
     business_name: user?.business_name || '',
     employee_count: user?.employee_count || '',
-    monthly_revenue_range: user?.monthly_revenue_range || '',
+    operation_type: user?.operation_type || 'nacional_digital',
+    operation_states: user?.operation_states || [],
+    operation_cities: user?.operation_cities || [],
     main_challenge: user?.main_challenge || ''
   });
 
   const [openCombobox, setOpenCombobox] = useState(false);
+  const [openStatesCombobox, setOpenStatesCombobox] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+  const [cityInput, setCityInput] = useState('');
 
   const selectedSegment = useMemo(() => {
     return BUSINESS_SEGMENTS.find(s => s.value === formData.business_segment);
@@ -146,6 +182,37 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave(formData);
+  };
+
+  const handleRemoveState = (stateValue) => {
+    setFormData({
+      ...formData,
+      operation_states: formData.operation_states.filter(s => s !== stateValue)
+    });
+  };
+
+  const handleRemoveCity = (cityValue) => {
+    setFormData({
+      ...formData,
+      operation_cities: formData.operation_cities.filter(c => c !== cityValue)
+    });
+  };
+
+  const handleAddCity = () => {
+    if (cityInput.trim() && !formData.operation_cities.includes(cityInput.trim())) {
+      setFormData({
+        ...formData,
+        operation_cities: [...formData.operation_cities, cityInput.trim()]
+      });
+      setCityInput('');
+    }
+  };
+
+  const handleCityKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddCity();
+    }
   };
 
   return (
@@ -227,46 +294,184 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="employee_count">3. Quantos funcionários? *</Label>
-              <Select
-                value={formData.employee_count}
-                onValueChange={(value) => setFormData({ ...formData, employee_count: value })}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="apenas_eu">Apenas eu (MEI)</SelectItem>
-                  <SelectItem value="2_a_5">2 a 5 funcionários</SelectItem>
-                  <SelectItem value="6_a_10">6 a 10 funcionários</SelectItem>
-                  <SelectItem value="11_a_20">11 a 20 funcionários</SelectItem>
-                  <SelectItem value="mais_de_20">Mais de 20</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>3. Quantos funcionários? *</Label>
+            <Select
+              value={formData.employee_count}
+              onValueChange={(value) => setFormData({ ...formData, employee_count: value })}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="apenas_eu">Apenas eu (MEI)</SelectItem>
+                <SelectItem value="2_a_5">2 a 5 funcionários</SelectItem>
+                <SelectItem value="6_a_10">6 a 10 funcionários</SelectItem>
+                <SelectItem value="11_a_20">11 a 20 funcionários</SelectItem>
+                <SelectItem value="mais_de_20">Mais de 20</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="monthly_revenue_range">4. Faturamento mensal? *</Label>
-              <Select
-                value={formData.monthly_revenue_range}
-                onValueChange={(value) => setFormData({ ...formData, monthly_revenue_range: value })}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ate_10k">Até R$ 10 mil</SelectItem>
-                  <SelectItem value="10k_a_30k">R$ 10 a 30 mil</SelectItem>
-                  <SelectItem value="30k_a_100k">R$ 30 a 100 mil</SelectItem>
-                  <SelectItem value="100k_a_300k">R$ 100 a 300 mil</SelectItem>
-                  <SelectItem value="acima_300k">Acima de R$ 300 mil</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-3">
+            <Label>4. Onde seu negócio atua? *</Label>
+            <RadioGroup
+              value={formData.operation_type}
+              onValueChange={(value) => setFormData({ ...formData, operation_type: value })}
+              required
+            >
+              <div className="flex items-start space-x-2 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                <RadioGroupItem value="nacional_digital" id="nacional_digital" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="nacional_digital" className="font-medium cursor-pointer">
+                    🌐 Nacional Digital
+                  </Label>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Atuo online, sem necessidade de presença física (e-commerce, serviços digitais)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                <RadioGroupItem value="nacional_fisica" id="nacional_fisica" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="nacional_fisica" className="font-medium cursor-pointer">
+                    🚚 Nacional Físico
+                  </Label>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Tenho estrutura física e/ou logística em todo o Brasil
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                <RadioGroupItem value="regional" id="regional" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="regional" className="font-medium cursor-pointer">
+                    📍 Regional
+                  </Label>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Atuo em estados e/ou cidades específicas
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+
+            {formData.operation_type === 'regional' && (
+              <div className="space-y-4 pl-6 mt-4 border-l-2 border-blue-200">
+                {/* Estados */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Estados onde atua:</Label>
+                  <Popover open={openStatesCombobox} onOpenChange={setOpenStatesCombobox}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                      >
+                        Selecionar estados
+                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Digite para buscar..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum estado encontrado.</CommandEmpty>
+                          <CommandGroup className="max-h-48 overflow-auto">
+                            {BRAZILIAN_STATES.map((state) => (
+                              <CommandItem
+                                key={state.value}
+                                value={state.label}
+                                onSelect={() => {
+                                  if (!formData.operation_states.includes(state.value)) {
+                                    setFormData({
+                                      ...formData,
+                                      operation_states: [...formData.operation_states, state.value]
+                                    });
+                                  }
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    formData.operation_states.includes(state.value)
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  }`}
+                                />
+                                {state.label} ({state.value})
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  
+                  {formData.operation_states.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formData.operation_states.map((stateValue) => {
+                        const state = BRAZILIAN_STATES.find(s => s.value === stateValue);
+                        return (
+                          <Badge key={stateValue} variant="secondary" className="gap-1">
+                            {state?.label}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveState(stateValue)}
+                              className="hover:bg-slate-300 rounded-full p-0.5"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Cidades */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Cidades específicas (opcional):</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Digite o nome da cidade e pressione Enter"
+                      value={cityInput}
+                      onChange={(e) => setCityInput(e.target.value)}
+                      onKeyDown={handleCityKeyDown}
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleAddCity}
+                      variant="outline"
+                      size="icon"
+                    >
+                      <Check className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Ex: São Paulo, Rio de Janeiro, Belo Horizonte...
+                  </p>
+                  
+                  {formData.operation_cities.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formData.operation_cities.map((city, index) => (
+                        <Badge key={index} variant="secondary" className="gap-1">
+                          {city}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCity(city)}
+                            className="hover:bg-slate-300 rounded-full p-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
