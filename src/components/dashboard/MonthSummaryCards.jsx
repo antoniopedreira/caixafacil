@@ -252,11 +252,11 @@ function InfoIcon({ explanationType }) {
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="text-xl">{explanation.title}</DialogTitle>
           </DialogHeader>
-          <div className="mt-2">
+          <div className="overflow-y-auto flex-1 pr-2 -mr-2">
             {explanation.description}
           </div>
         </DialogContent>
