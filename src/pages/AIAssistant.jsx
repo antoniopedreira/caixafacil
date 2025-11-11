@@ -60,10 +60,10 @@ export default function AIAssistant() {
   };
 
   useEffect(() => {
-    if (isLoading) {
+    if (messages.length > 0) {
       scrollToBottom();
     }
-  }, [isLoading]);
+  }, [messages]);
 
   useEffect(() => {
     if (!user || !isFirstLoadRef.current) return;
@@ -277,10 +277,6 @@ export default function AIAssistant() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-      
-      setTimeout(() => {
-        scrollToTop();
-      }, 100);
     } catch (error) {
       console.error('Error sending message:', error);
       
@@ -388,7 +384,9 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
     return insights;
   }, [financialData]);
 
-  if (loadingUser || loadingTransactions || loadingRecurring) {
+  const isLoading = loadingUser || loadingTransactions || loadingRecurring;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 p-6">
         <div className="max-w-4xl mx-auto space-y-4">
@@ -507,65 +505,12 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
           </Alert>
         )}
 
-        {/* Área de Chat - MAIOR e DESTACADA */}
+        {/* Área de Chat */}
         <div className="flex-1 bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col border-4 border-purple-200">
-          {/* Área de Input PRIMEIRO - NO TOPO */}
-          <div className="border-b-4 border-purple-200 p-4 md:p-6 bg-gradient-to-r from-purple-50 to-blue-50 flex-shrink-0">
-            {messages.length > 0 && (
-              <div className="mb-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetConversation}
-                  className="w-full gap-2 bg-white hover:bg-purple-50 border-purple-200 shadow-sm"
-                >
-                  <Home className="w-4 h-4" />
-                  Voltar para o menu de perguntas sugeridas
-                </Button>
-              </div>
-            )}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="flex gap-3"
-            >
-              <div className="flex-1 relative">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="💬 Pergunte qualquer coisa sobre suas finanças..."
-                  disabled={isLoading}
-                  className="h-14 text-base bg-white border-2 border-purple-300 focus:border-purple-500 focus:ring-4 focus:ring-purple-200 shadow-lg rounded-xl px-5 placeholder:text-slate-400"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hidden md:block">
-                  Enter para enviar
-                </div>
-              </div>
-              <Button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                className="h-14 px-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-xl text-base font-semibold rounded-xl"
-              >
-                {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-5 h-5 mr-2" />
-                    Enviar
-                  </>
-                )}
-              </Button>
-            </form>
-            
-            <p className="text-center text-xs text-slate-500 mt-3">
-              ✨ <strong>Dica:</strong> Quanto mais detalhes você der, melhor será minha análise!
-            </p>
-          </div>
-
-          {/* Histórico de Mensagens DEPOIS - ABAIXO DO INPUT */}
+          {/* Área de Conteúdo com Scroll */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+            <div ref={messagesStartRef} />
+            
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-4">
                 <div className="relative">
@@ -586,10 +531,24 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
               </div>
             ) : (
               <>
-                <div ref={messagesStartRef} />
+                {messages.length > 0 && (
+                  <div className="mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResetConversation}
+                      className="w-full gap-2 bg-white hover:bg-purple-50 border-purple-200 shadow-sm"
+                    >
+                      <Home className="w-4 h-4" />
+                      Voltar para o menu de perguntas sugeridas
+                    </Button>
+                  </div>
+                )}
+                
                 {messages.map((message, index) => (
                   <ChatMessage key={index} message={message} avatarId={selectedAvatar} />
                 ))}
+                
                 {isLoading && (
                   <div className="flex gap-3">
                     <FlavioAvatar avatarId={selectedAvatar} size="sm" />
@@ -603,10 +562,55 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                     </div>
                   </div>
                 )}
+                
                 <div ref={messagesEndRef} />
               </>
             )}
           </div>
+
+          {/* Input SEMPRE NO FINAL quando há mensagens */}
+          {messages.length > 0 && (
+            <div className="border-t-4 border-purple-200 p-4 md:p-6 bg-gradient-to-r from-purple-50 to-blue-50 flex-shrink-0">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendMessage();
+                }}
+                className="flex gap-3"
+              >
+                <div className="flex-1 relative">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="💬 Pergunte qualquer coisa sobre suas finanças..."
+                    disabled={isLoading}
+                    className="h-14 text-base bg-white border-2 border-purple-300 focus:border-purple-500 focus:ring-4 focus:ring-purple-200 shadow-lg rounded-xl px-5 placeholder:text-slate-400"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hidden md:block">
+                    Enter para enviar
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading || !input.trim()}
+                  className="h-14 px-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-xl text-base font-semibold rounded-xl"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 mr-2" />
+                      Enviar
+                    </>
+                  )}
+                </Button>
+              </form>
+              
+              <p className="text-center text-xs text-slate-500 mt-3">
+                ✨ <strong>Dica:</strong> Quanto mais detalhes você der, melhor será minha análise!
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
