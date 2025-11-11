@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -522,6 +523,48 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                   </h2>
                   <p className="text-slate-600 max-w-lg text-lg mb-6">
                     {consultorName === 'Flávia' ? 'Sua consultora financeira pessoal' : 'Seu consultor financeiro pessoal'}. Bora analisar suas finanças, encontrar oportunidades e fazer planos práticos?
+                  </p>
+                </div>
+
+                {/* Input no meio da tela inicial */}
+                <div className="w-full max-w-3xl">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }}
+                    className="flex gap-3"
+                  >
+                    <div className="flex-1 relative">
+                      <Input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="💬 Pergunte qualquer coisa sobre suas finanças..."
+                        disabled={isLoading}
+                        className="h-14 text-base bg-white border-2 border-purple-300 focus:border-purple-500 focus:ring-4 focus:ring-purple-200 shadow-lg rounded-xl px-5 placeholder:text-slate-400"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hidden md:block">
+                        Enter para enviar
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isLoading || !input.trim()}
+                      className="h-14 px-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-xl text-base font-semibold rounded-xl"
+                    >
+                      {isLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5 mr-2" />
+                          Enviar
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                  
+                  <p className="text-center text-xs text-slate-500 mt-3">
+                    ✨ <strong>Dica:</strong> Quanto mais detalhes você der, melhor será minha análise!
                   </p>
                 </div>
                 
