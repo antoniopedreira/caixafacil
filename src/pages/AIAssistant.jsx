@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Send, Sparkles, AlertCircle, Zap } from "lucide-react";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown } from "lucide-react";
+import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import ChatMessage from "../components/ai/ChatMessage";
@@ -59,6 +59,7 @@ export default function AIAssistant() {
     return user?.business_segment && user?.business_name;
   }, [user]);
 
+  // Análise financeira avançada
   const financialData = useMemo(() => {
     if (!transactions.length) return null;
 
@@ -66,23 +67,48 @@ export default function AIAssistant() {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     
+    // Transações do mês atual
     const currentMonthTransactions = transactions.filter(t => {
       const date = new Date(t.date);
       return date >= monthStart && date <= monthEnd;
     });
 
+    // Transações do mês anterior
+    const lastMonthStart = startOfMonth(subMonths(currentDate, 1));
+    const lastMonthEnd = endOfMonth(subMonths(currentDate, 1));
+    const lastMonthTransactions = transactions.filter(t => {
+      const date = new Date(t.date);
+      return date >= lastMonthStart && date <= lastMonthEnd;
+    });
+
+    // Cálculo do saldo total
     const totalBalance = transactions.reduce((sum, t) => {
       return sum + (t.type === 'income' ? t.amount : -Math.abs(t.amount));
     }, 0);
 
-    const income = currentMonthTransactions
+    // Resumo do mês atual
+    const currentIncome = currentMonthTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const expense = currentMonthTransactions
+    const currentExpense = currentMonthTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
+    // Resumo do mês anterior
+    const lastIncome = lastMonthTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const lastExpense = lastMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    // Variações mês a mês
+    const incomeVariation = lastIncome > 0 ? ((currentIncome - lastIncome) / lastIncome) * 100 : 0;
+    const expenseVariation = lastExpense > 0 ? ((currentExpense - lastExpense) / lastExpense) * 100 : 0;
+
+    // Top despesas por categoria
     const expensesByCategory = {};
     currentMonthTransactions
       .filter(t => t.type === 'expense')
@@ -98,15 +124,85 @@ export default function AIAssistant() {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
 
+    // Média de receita dos últimos 3 meses
+    const threeMonthsAgo = subMonths(currentDate, 3);
+    const last3MonthsIncome = transactions
+      .filter(t => {
+        const date = new Date(t.date);
+        return t.type === 'income' && date >= threeMonthsAgo;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const avgMonthlyIncome = last3MonthsIncome / 3;
+
+    // Despesas recorrentes ativas
+    const activeRecurring = recurringExpenses.filter(e => e.status === 'active');
+    const totalRecurringExpenses = activeRecurring.reduce((sum, e) => sum + e.amount, 0);
+
+    // Runway de caixa (quantos dias o caixa aguenta com base nas despesas médias)
+    let cashRunway = null;
+    if (currentExpense > 0) {
+      const avgDailyExpense = currentExpense / 30;
+      if (avgDailyExpense > 0 && totalBalance > 0) {
+        cashRunway = Math.floor(totalBalance / avgDailyExpense);
+      }
+    }
+
+    // Análise de sazonalidade (últimos 6 meses)
+    const last6Months = [];
+    for (let i = 0; i < 6; i++) {
+      const monthDate = subMonths(currentDate, i);
+      const mStart = startOfMonth(monthDate);
+      const mEnd = endOfMonth(monthDate);
+      
+      const monthTxs = transactions.filter(t => {
+        const date = new Date(t.date);
+        return date >= mStart && date <= mEnd;
+      });
+      
+      const mIncome = monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const mExpense = monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + Math.abs(t.amount), 0);
+      
+      last6Months.push({
+        month: format(monthDate, 'MMM/yy', { locale: ptBR }),
+        income: mIncome,
+        expense: mExpense,
+        balance: mIncome - mExpense
+      });
+    }
+
+    // Detecta tendência
+    const hasGrowingIncome = last6Months.length >= 3 && 
+      last6Months[0].income > last6Months[2].income;
+    const hasGrowingExpense = last6Months.length >= 3 && 
+      last6Months[0].expense > last6Months[2].expense;
+
     return {
       currentBalance: totalBalance,
       monthSummary: {
-        income,
-        expense,
-        balance: income - expense
+        income: currentIncome,
+        expense: currentExpense,
+        balance: currentIncome - currentExpense
+      },
+      lastMonthSummary: {
+        income: lastIncome,
+        expense: lastExpense,
+        balance: lastIncome - lastExpense
+      },
+      variations: {
+        income: incomeVariation,
+        expense: expenseVariation
       },
       topExpenses,
-      recurringExpenses: recurringExpenses.filter(e => e.status === 'active').slice(0, 5)
+      recurringExpenses: activeRecurring.slice(0, 5),
+      totalRecurringExpenses,
+      avgMonthlyIncome,
+      cashRunway,
+      last6Months: last6Months.reverse(), // Do mais antigo para o mais recente
+      trends: {
+        hasGrowingIncome,
+        hasGrowingExpense
+      }
     };
   }, [transactions, recurringExpenses]);
 
@@ -179,15 +275,22 @@ export default function AIAssistant() {
         role: "assistant",
         content: `Ótimo, ${contextData.business_name}! 🎉
 
-Agora que conheço seu negócio, posso te ajudar de forma muito mais precisa. Estou aqui para:
+Agora que conheço seu negócio, vou atuar como seu **consultor financeiro pessoal**. 
 
-💰 **Ajudar com seu fluxo de caixa**
-📊 **Analisar suas finanças**
-💡 **Dar dicas personalizadas para seu segmento**
-📈 **Sugerir estratégias de crescimento**
-🎯 **Resolver seus desafios específicos**
+Como seu consultor, vou:
 
-Como posso te ajudar hoje?`,
+💰 **Analisar profundamente** sua saúde financeira
+🎯 **Identificar oportunidades** de crescimento e economia
+📊 **Acompanhar métricas** importantes do seu negócio
+💡 **Sugerir estratégias** práticas e personalizadas
+⚠️ **Alertar sobre riscos** antes que se tornem problemas
+
+${contextData.main_challenge ? `\n🎯 Vejo que seu principal desafio é: "${contextData.main_challenge}"\nVou focar especialmente nisso nas minhas análises e recomendações!\n` : ''}
+Como posso te ajudar hoje? Você pode:
+- Pedir uma análise completa da sua situação atual
+- Fazer perguntas específicas sobre algum aspecto do negócio
+- Pedir um plano de ação para melhorar alguma área
+- Ou simplesmente conversar sobre seus desafios financeiros!`,
       };
       
       setMessages([welcomeMessage]);
@@ -195,6 +298,52 @@ Como posso te ajudar hoje?`,
       console.error('Error saving context:', error);
     }
   };
+
+  // Insights rápidos na interface
+  const quickInsights = useMemo(() => {
+    if (!financialData) return null;
+
+    const insights = [];
+    const { currentBalance, monthSummary, variations, cashRunway, totalRecurringExpenses } = financialData;
+
+    // Alerta de caixa baixo
+    if (currentBalance < totalRecurringExpenses && currentBalance > 0) {
+      insights.push({
+        type: 'warning',
+        icon: AlertCircle,
+        text: `Caixa cobre apenas ${Math.floor(currentBalance / totalRecurringExpenses * 30)} dias de despesas fixas`
+      });
+    }
+
+    // Alerta de prejuízo
+    if (monthSummary.balance < 0) {
+      insights.push({
+        type: 'danger',
+        icon: TrendingDown,
+        text: `Prejuízo de R$ ${Math.abs(monthSummary.balance).toLocaleString('pt-BR', {minimumFractionDigits: 0})} este mês`
+      });
+    }
+
+    // Crescimento de receita
+    if (variations.income > 10) {
+      insights.push({
+        type: 'success',
+        icon: TrendingUp,
+        text: `Receita cresceu ${variations.income.toFixed(0)}% vs mês passado`
+      });
+    }
+
+    // Aumento de despesas
+    if (variations.expense > 15) {
+      insights.push({
+        type: 'warning',
+        icon: AlertCircle,
+        text: `Despesas aumentaram ${variations.expense.toFixed(0)}% vs mês passado`
+      });
+    }
+
+    return insights;
+  }, [financialData]);
 
   if (loadingUser || loadingTransactions || loadingRecurring) {
     return (
@@ -219,7 +368,7 @@ Como posso te ajudar hoje?`,
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-bold text-slate-900">Assistente Financeiro IA</h1>
+                  <h1 className="text-2xl font-bold text-slate-900">Consultor Financeiro IA</h1>
                   <div className="flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 rounded-full">
                     <Zap className="w-3 h-3 text-purple-600" />
                     <span className="text-xs font-semibold text-purple-700">GPT-4o</span>
@@ -227,8 +376,8 @@ Como posso te ajudar hoje?`,
                 </div>
                 <p className="text-slate-600 text-sm">
                   {hasBusinessContext 
-                    ? `Olá! Estou aqui para ajudar o ${user.business_name} a crescer! 🚀`
-                    : "Seu consultor financeiro pessoal, disponível 24/7"
+                    ? `Seu consultor pessoal para o ${user.business_name} 🚀`
+                    : "Consultoria financeira personalizada, 24/7"
                   }
                 </p>
               </div>
@@ -241,10 +390,33 @@ Como posso te ajudar hoje?`,
                 className="flex-shrink-0"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                Atualizar Contexto
+                Atualizar Perfil
               </Button>
             )}
           </div>
+
+          {/* Quick Insights */}
+          {quickInsights && quickInsights.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <p className="text-xs font-semibold text-slate-600 mb-2">📊 Insights Rápidos:</p>
+              <div className="flex flex-wrap gap-2">
+                {quickInsights.map((insight, idx) => {
+                  const Icon = insight.icon;
+                  const colors = {
+                    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    warning: 'bg-orange-50 text-orange-700 border-orange-200',
+                    danger: 'bg-rose-50 text-rose-700 border-rose-200'
+                  };
+                  return (
+                    <div key={idx} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${colors[insight.type]}`}>
+                      <Icon className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">{insight.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Alerts */}
@@ -252,7 +424,7 @@ Como posso te ajudar hoje?`,
           <Alert className="mb-4 border-orange-200 bg-orange-50">
             <AlertCircle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-900">
-              <strong>💡 Dica:</strong> Configure o contexto do seu negócio para receber conselhos mais personalizados!
+              <strong>💡 Melhore a consultoria:</strong> Configure o contexto do seu negócio para análises mais precisas!
               <Button
                 variant="link"
                 size="sm"
@@ -269,7 +441,7 @@ Como posso te ajudar hoje?`,
           <Alert className="mb-4 border-blue-200 bg-blue-50">
             <AlertCircle className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-900">
-              <strong>📊 Adicione transações</strong> para que eu possa analisar seus dados financeiros e dar conselhos mais precisos!
+              <strong>📊 Adicione transações</strong> para que eu possa fazer análises profundas e dar recomendações personalizadas!
             </AlertDescription>
           </Alert>
         )}
@@ -287,7 +459,7 @@ Como posso te ajudar hoje?`,
                     Como posso te ajudar hoje?
                   </h2>
                   <p className="text-slate-600 max-w-md">
-                    Faça perguntas sobre gestão financeira, fluxo de caixa, ou peça análises do seu negócio!
+                    Sou seu consultor financeiro pessoal. Posso analisar suas finanças, sugerir melhorias e criar planos de ação!
                   </p>
                 </div>
                 
@@ -300,27 +472,27 @@ Como posso te ajudar hoje?`,
                     <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center mb-3">
                       <Brain className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Inteligente</h3>
+                    <h3 className="font-semibold text-slate-900 mb-1">Análise Profunda</h3>
                     <p className="text-sm text-slate-600">
-                      Powered by GPT-4o da OpenAI, o modelo mais avançado
+                      Entendo seus dados financeiros e seu contexto de negócio
                     </p>
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                     <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mb-3">
-                      <Sparkles className="w-6 h-6 text-white" />
+                      <Target className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Personalizado</h3>
+                    <h3 className="font-semibold text-slate-900 mb-1">Consultoria Proativa</h3>
                     <p className="text-sm text-slate-600">
-                      Analisa seus dados financeiros reais
+                      Identifico problemas e oportunidades automaticamente
                     </p>
                   </div>
                   <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                     <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center mb-3">
                       <Zap className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Disponível 24/7</h3>
+                    <h3 className="font-semibold text-slate-900 mb-1">Planos de Ação</h3>
                     <p className="text-sm text-slate-600">
-                      Consultor financeiro sempre à disposição
+                      Forneço estratégias práticas e acionáveis
                     </p>
                   </div>
                 </div>
@@ -361,7 +533,7 @@ Como posso te ajudar hoje?`,
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Digite sua pergunta..."
+                placeholder="Digite sua pergunta ou peça uma análise..."
                 disabled={isLoading}
                 className="flex-1 bg-white border-slate-300 focus:border-purple-500 focus:ring-purple-500"
               />
