@@ -112,13 +112,17 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
                         onClick={() => handleTransactionClick(transaction)}
                         className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 transition-colors text-left"
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-900 truncate">
-                            {formatDescription(transaction.description)}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {format(new Date(transaction.date), "dd/MM/yyyy", { locale: ptBR })}
-                          </p>
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {/* Espaçamento para alinhar com o chevron */}
+                          <div className="w-4 flex-shrink-0"></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-900 truncate">
+                              {formatDescription(transaction.description)}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {format(new Date(transaction.date), "dd/MM/yyyy", { locale: ptBR })}
+                            </p>
+                          </div>
                         </div>
                         <span className={`font-semibold text-sm ml-4 whitespace-nowrap ${
                           type === 'income' ? 'text-emerald-600' : 'text-rose-600'
