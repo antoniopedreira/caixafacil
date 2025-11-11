@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -263,6 +264,7 @@ export default function Dashboard() {
                   transactions={incomeTransactions}
                   type="income"
                   onClose={() => setExpandedCard(null)}
+                  allTransactions={transactions}
                 />
               ),
               expense: expenseTransactions.length > 0 && (
@@ -270,6 +272,7 @@ export default function Dashboard() {
                   transactions={expenseTransactions}
                   type="expense"
                   onClose={() => setExpandedCard(null)}
+                  allTransactions={transactions}
                 />
               )
             }}
