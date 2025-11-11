@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, User } from 'lucide-react';
+import { User as UserIcon, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 export default function ChatMessage({ message }) {
@@ -9,7 +9,7 @@ export default function ChatMessage({ message }) {
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
         <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-          <Brain className="w-5 h-5 text-white" />
+          <User className="w-5 h-5 text-white" />
         </div>
       )}
       
@@ -29,7 +29,7 @@ export default function ChatMessage({ message }) {
       
       {isUser && (
         <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-          <User className="w-5 h-5 text-white" />
+          <UserIcon className="w-5 h-5 text-white" />
         </div>
       )}
     </div>

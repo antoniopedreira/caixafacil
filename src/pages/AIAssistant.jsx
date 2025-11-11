@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw } from "lucide-react";
+import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw, User } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -279,24 +279,29 @@ export default function AIAssistant() {
       
       const welcomeMessage = {
         role: "assistant",
-        content: `Ótimo, ${contextData.business_name}! 🎉
+        content: `E aí! Prazer, sou o Flávio! 👋
 
-Agora que conheço seu negócio, vou atuar como seu **consultor financeiro pessoal**. 
+Fiquei muito feliz em conhecer o ${contextData.business_name}! ${contextData.business_segment ? `Já trabalhei com vários negócios no ramo de ${contextData.business_segment}, então conheço bem os desafios do dia a dia.` : ''}
 
-Como seu consultor, vou:
+Olha, vou ser direto: não sou apenas um assistente que responde perguntas. Sou seu **consultor financeiro pessoal**. Tá mais para ter um parceiro de negócios que olha seus números com você do que um robô automático.
 
-💰 **Analisar profundamente** sua saúde financeira
-🎯 **Identificar oportunidades** de crescimento e economia
-📊 **Acompanhar métricas** importantes do seu negócio
-💡 **Sugerir estratégias** práticas e personalizadas
-⚠️ **Alertar sobre riscos** antes que se tornem problemas
+**O que eu faço por você:**
 
-${contextData.main_challenge ? `\n🎯 Vejo que seu principal desafio é: "${contextData.main_challenge}"\nVou focar especialmente nisso nas minhas análises e recomendações!\n` : ''}
-Como posso te ajudar hoje? Você pode:
-- Pedir uma análise completa da sua situação atual
-- Fazer perguntas específicas sobre algum aspecto do negócio
-- Pedir um plano de ação para melhorar alguma área
-- Ou simplesmente conversar sobre seus desafios financeiros!`,
+💰 **Analiso suas finanças a fundo** - E te falo a real, sem enrolação
+🎯 **Identifico oportunidades** - Às vezes tem dinheiro parado no lugar errado
+📊 **Acompanho seus indicadores** - E te aviso quando algo não tá legal
+💡 **Dou conselhos práticos** - Coisas que você consegue fazer mesmo
+⚠️ **Te alerto antes do problema** - Melhor prevenir que remediar, né?
+
+${contextData.main_challenge ? `\n🎯 **Sobre o desafio que você me contou:**\n"${contextData.main_challenge}"\n\nÓtimo, vou focar especialmente nisso! Sempre que eu analisar seus números ou der alguma recomendação, vou ter esse desafio em mente.\n` : ''}
+
+**Como a gente trabalha juntos?**
+- Me pergunta o que quiser sobre seu negócio
+- Pede uma análise completa da situação atual
+- Me conta um problema específico que tá te tirando o sono
+- Ou simplesmente bate um papo sobre as finanças
+
+Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde financeira? 🚀`,
       };
       
       setMessages([welcomeMessage]);
@@ -365,20 +370,20 @@ Como posso te ajudar hoje? Você pode:
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
               <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-                <Brain className="w-8 h-8 text-white" />
+                <User className="w-8 h-8 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-bold text-slate-900">Consultor Financeiro IA</h1>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h1 className="text-2xl font-bold text-slate-900">Flávio - Seu Consultor Financeiro</h1>
                   <div className="flex items-center gap-1 bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 rounded-full">
                     <Zap className="w-3 h-3 text-purple-600" />
-                    <span className="text-xs font-semibold text-purple-700">GPT-4o</span>
+                    <span className="text-xs font-semibold text-purple-700">IA Avançada</span>
                   </div>
                 </div>
                 <p className="text-slate-600 text-sm">
                   {hasBusinessContext 
-                    ? `Seu consultor pessoal para o ${user.business_name} 🚀`
-                    : "Consultoria financeira personalizada, 24/7"
+                    ? `Consultor pessoal do ${user.business_name} 🚀`
+                    : "Consultoria financeira humanizada, disponível 24/7"
                   }
                 </p>
               </div>
@@ -412,7 +417,7 @@ Como posso te ajudar hoje? Você pode:
           {/* Quick Insights */}
           {quickInsights && quickInsights.length > 0 && (
             <div className="mt-4 pt-4 border-t border-slate-200">
-              <p className="text-xs font-semibold text-slate-600 mb-2">📊 Insights Rápidos:</p>
+              <p className="text-xs font-semibold text-slate-600 mb-2">📊 Flávio identificou:</p>
               <div className="flex flex-wrap gap-2">
                 {quickInsights.map((insight, idx) => {
                   const Icon = insight.icon;
@@ -438,7 +443,7 @@ Como posso te ajudar hoje? Você pode:
           <Alert className="mb-4 border-orange-200 bg-orange-50">
             <AlertCircle className="h-4 w-4 text-orange-600" />
             <AlertDescription className="text-orange-900">
-              <strong>💡 Melhore a consultoria:</strong> Configure o contexto do seu negócio para análises mais precisas!
+              <strong>💡 Dica do Flávio:</strong> Configure o contexto do seu negócio para análises ainda mais precisas!
               <Button
                 variant="link"
                 size="sm"
@@ -455,7 +460,7 @@ Como posso te ajudar hoje? Você pode:
           <Alert className="mb-4 border-blue-200 bg-blue-50">
             <AlertCircle className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-900">
-              <strong>📊 Adicione transações</strong> para que eu possa fazer análises profundas e dar recomendações personalizadas!
+              <strong>📊 Flávio precisa de dados:</strong> Adicione transações para eu fazer análises profundas e dar recomendações personalizadas!
             </AlertDescription>
           </Alert>
         )}
@@ -466,14 +471,14 @@ Como posso te ajudar hoje? Você pode:
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-6">
                 <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center">
-                  <Sparkles className="w-10 h-10 text-purple-600" />
+                  <User className="w-10 h-10 text-purple-600" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                    Como posso te ajudar hoje?
+                    E aí! Sou o Flávio 👋
                   </h2>
                   <p className="text-slate-600 max-w-md">
-                    Sou seu consultor financeiro pessoal. Posso analisar suas finanças, sugerir melhorias e criar planos de ação!
+                    Seu consultor financeiro pessoal. Bora analisar suas finanças, encontrar oportunidades e fazer planos práticos?
                   </p>
                 </div>
                 
@@ -486,9 +491,9 @@ Como posso te ajudar hoje? Você pode:
                     <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center mb-3">
                       <Brain className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Análise Profunda</h3>
+                    <h3 className="font-semibold text-slate-900 mb-1">Análise Humanizada</h3>
                     <p className="text-sm text-slate-600">
-                      Entendo seus dados financeiros e seu contexto de negócio
+                      Olho seus dados como um consultor de verdade, não como robô
                     </p>
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -497,16 +502,16 @@ Como posso te ajudar hoje? Você pode:
                     </div>
                     <h3 className="font-semibold text-slate-900 mb-1">Consultoria Proativa</h3>
                     <p className="text-sm text-slate-600">
-                      Identifico problemas e oportunidades automaticamente
+                      Te aviso dos problemas antes deles virarem dor de cabeça
                     </p>
                   </div>
                   <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
                     <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center mb-3">
                       <Zap className="w-6 h-6 text-white" />
                     </div>
-                    <h3 className="font-semibold text-slate-900 mb-1">Planos de Ação</h3>
+                    <h3 className="font-semibold text-slate-900 mb-1">Ações Práticas</h3>
                     <p className="text-sm text-slate-600">
-                      Forneço estratégias práticas e acionáveis
+                      Estratégias que você consegue implementar de verdade
                     </p>
                   </div>
                 </div>
@@ -520,13 +525,14 @@ Como posso te ajudar hoje? Você pode:
                 {isLoading && (
                   <div className="flex gap-3">
                     <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Brain className="w-5 h-5 text-white" />
+                      <User className="w-5 h-5 text-white" />
                     </div>
                     <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="text-xs text-slate-500 ml-2">Flávio está analisando...</span>
                       </div>
                     </div>
                   </div>
@@ -547,7 +553,7 @@ Como posso te ajudar hoje? Você pode:
                   className="w-full gap-2 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Nova Conversa - Voltar às Perguntas Sugeridas
+                  Nova Conversa com o Flávio
                 </Button>
               </div>
             )}
@@ -561,7 +567,7 @@ Como posso te ajudar hoje? Você pode:
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Digite sua pergunta ou peça uma análise..."
+                placeholder="Conversa comigo sobre suas finanças..."
                 disabled={isLoading}
                 className="flex-1 bg-white border-slate-300 focus:border-purple-500 focus:ring-purple-500"
               />
