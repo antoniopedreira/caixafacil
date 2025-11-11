@@ -52,19 +52,28 @@ export default function Dashboard() {
   const monthOptions = useMemo(() => {
     const options = [];
     
-    // Adiciona anos completos (últimos 5 anos)
+    // Adiciona apenas ano atual e ano passado
     const currentYear = new Date().getFullYear();
-    for (let i = 0; i < 5; i++) {
-      const year = currentYear - i;
-      options.push({
-        value: `year_${year}`,
-        label: `📅 Ano Completo ${year}`,
-        shortLabel: `${year}`,
-        date: null,
-        isYear: true,
-        year: year
-      });
-    }
+    
+    // Ano atual
+    options.push({
+      value: `year_${currentYear}`,
+      label: `📅 Ano Completo ${currentYear}`,
+      shortLabel: `${currentYear}`,
+      date: null,
+      isYear: true,
+      year: currentYear
+    });
+    
+    // Ano passado
+    options.push({
+      value: `year_${currentYear - 1}`,
+      label: `📅 Ano Completo ${currentYear - 1}`,
+      shortLabel: `${currentYear - 1}`,
+      date: null,
+      isYear: true,
+      year: currentYear - 1
+    });
     
     // Adiciona separador visual
     options.push({
