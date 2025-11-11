@@ -26,6 +26,33 @@ const CATEGORY_NAMES = {
   outras_despesas: 'Outras Despesas',
 };
 
+function normalizeDescription(text) {
+  if (!text) return 'Sem descrição';
+  
+  // Remove frases como "recebido de", "enviado para", "pix enviado", etc
+  let cleaned = text
+    .replace(/pix\s+enviado\s+para\s+/gi, '')
+    .replace(/pix\s+recebido\s+de\s+/gi, '')
+    .replace(/ted\s+enviado\s+para\s+/gi, '')
+    .replace(/ted\s+recebido\s+de\s+/gi, '')
+    .replace(/transferencia\s+enviado\s+para\s+/gi, '')
+    .replace(/transferencia\s+recebido\s+de\s+/gi, '')
+    .replace(/recebido\s+de\s+/gi, '')
+    .replace(/enviado\s+para\s+/gi, '')
+    .replace(/recebido\s+/gi, '')
+    .replace(/enviado\s+/gi, '')
+    .trim();
+  
+  // Remove números, valores monetários e datas para melhor agrupamento
+  cleaned = cleaned
+    .replace(/\d{2}\/\d{2}\/\d{4}/g, '') // Remove datas
+    .replace(/r\$\s*[\d.,]+/gi, '') // Remove valores
+    .replace(/\s+/g, ' ') // Normaliza espaços
+    .trim();
+  
+  return cleaned || 'Sem descrição';
+}
+
 function formatDescription(text, maxWords = 4) {
   if (!text) return '';
   
@@ -38,21 +65,7 @@ function formatDescription(text, maxWords = 4) {
     }).join(' ');
   };
   
-  // Remove frases como "recebido de", "enviado para", "pix enviado", etc
-  let cleaned = text
-    .replace(/pix\s+enviado\s+para\s+/gi, 'Pix ')
-    .replace(/pix\s+recebido\s+de\s+/gi, 'Pix ')
-    .replace(/ted\s+enviado\s+para\s+/gi, 'TED ')
-    .replace(/ted\s+recebido\s+de\s+/gi, 'TED ')
-    .replace(/transferencia\s+enviado\s+para\s+/gi, 'Transferência ')
-    .replace(/transferencia\s+recebido\s+de\s+/gi, 'Transferência ')
-    .replace(/recebido\s+de\s+/gi, '')
-    .replace(/enviado\s+para\s+/gi, '')
-    .replace(/recebido\s+/gi, '')
-    .replace(/enviado\s+/gi, '')
-    .trim();
-  
-  const words = cleaned.split(' ').filter(w => w.length > 0);
+  const words = text.split(' ').filter(w => w.length > 0);
   const abbreviated = words.slice(0, maxWords).join(' ');
   
   return toTitleCase(abbreviated);
@@ -67,6 +80,7 @@ const formatCurrency = (value) => {
 
 export default function ExpandedTransactionList({ transactions, type, onClose, allTransactions }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
+  const [expandedPayee, setExpandedPayee] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   // Agrupa transações por categoria
@@ -85,9 +99,32 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
     const sortedGroups = Object.entries(groups)
       .map(([category, items]) => {
         const total = items.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        // Ordena as transações dentro da categoria por valor decrescente
-        const sortedItems = [...items].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-        return { category, items: sortedItems, total };
+        
+        // Agrupa por favorecido dentro da categoria
+        const payeeGroups = {};
+        items.forEach(item => {
+          const payeeKey = normalizeDescription(item.description);
+          if (!payeeGroups[payeeKey]) {
+            payeeGroups[payeeKey] = {
+              payee: payeeKey,
+              displayName: formatDescription(item.description, 6),
+              transactions: [],
+              total: 0
+            };
+          }
+          payeeGroups[payeeKey].transactions.push(item);
+          payeeGroups[payeeKey].total += Math.abs(item.amount);
+        });
+        
+        // Ordena favorecidos por valor total (maior primeiro)
+        const sortedPayees = Object.values(payeeGroups)
+          .sort((a, b) => b.total - a.total)
+          .map(payeeGroup => ({
+            ...payeeGroup,
+            transactions: payeeGroup.transactions.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          }));
+        
+        return { category, payees: sortedPayees, total };
       })
       .sort((a, b) => b.total - a.total);
 
@@ -98,12 +135,17 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
     setSelectedTransaction(transaction);
   };
 
+  const togglePayee = (categoryKey, payeeKey) => {
+    const key = `${categoryKey}_${payeeKey}`;
+    setExpandedPayee(expandedPayee === key ? null : key);
+  };
+
   return (
     <>
       <div className="mt-4 bg-white border border-slate-200 rounded-lg overflow-hidden">
         <div className="max-h-96 overflow-y-auto">
           <div className="divide-y divide-slate-200">
-            {groupedTransactions.map(({ category, items, total }) => (
+            {groupedTransactions.map(({ category, payees, total }) => (
               <div key={category}>
                 {/* Header da categoria */}
                 <button
@@ -120,7 +162,7 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
                       {CATEGORY_NAMES[category] || category}
                     </span>
                     <span className="text-xs text-slate-500">
-                      ({items.length})
+                      ({payees.reduce((sum, p) => sum + p.transactions.length, 0)})
                     </span>
                   </div>
                   <span className={`font-bold text-sm ml-4 flex-shrink-0 ${
@@ -130,34 +172,89 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
                   </span>
                 </button>
 
-                {/* Lista de transações da categoria */}
+                {/* Lista de favorecidos da categoria */}
                 {expandedCategory === category && (
-                  <div className="bg-slate-50 divide-y divide-slate-200">
-                    {items.map((transaction, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleTransactionClick(transaction)}
-                        className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 transition-colors text-left"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {/* Espaçamento para alinhar com o chevron */}
-                          <div className="w-4 flex-shrink-0"></div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-slate-900 truncate">
-                              {formatDescription(transaction.description)}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {format(new Date(transaction.date), "dd/MM/yyyy", { locale: ptBR })}
-                            </p>
-                          </div>
+                  <div className="bg-slate-50">
+                    {payees.map((payeeGroup, payeeIdx) => {
+                      const isPayeeExpanded = expandedPayee === `${category}_${payeeGroup.payee}`;
+                      const hasMultipleTransactions = payeeGroup.transactions.length > 1;
+                      
+                      return (
+                        <div key={payeeIdx} className="border-t border-slate-200">
+                          {/* Linha do favorecido consolidado */}
+                          <button
+                            onClick={() => {
+                              if (hasMultipleTransactions) {
+                                togglePayee(category, payeeGroup.payee);
+                              } else {
+                                handleTransactionClick(payeeGroup.transactions[0]);
+                              }
+                            }}
+                            className="w-full px-4 py-2.5 pl-10 flex items-center justify-between hover:bg-slate-100 transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {hasMultipleTransactions && (
+                                isPayeeExpanded ? (
+                                  <ChevronDown className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                ) : (
+                                  <ChevronRight className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                )
+                              )}
+                              {!hasMultipleTransactions && <div className="w-3 flex-shrink-0"></div>}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-900 font-medium truncate">
+                                  {payeeGroup.displayName}
+                                </p>
+                                {hasMultipleTransactions && (
+                                  <p className="text-xs text-slate-500 mt-0.5">
+                                    {payeeGroup.transactions.length} transações
+                                  </p>
+                                )}
+                                {!hasMultipleTransactions && (
+                                  <p className="text-xs text-slate-500 mt-0.5">
+                                    {format(new Date(payeeGroup.transactions[0].date), "dd/MM/yyyy", { locale: ptBR })}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <span className={`font-semibold text-sm ml-4 whitespace-nowrap flex-shrink-0 ${
+                              type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                            }`}>
+                              R$ {formatCurrency(payeeGroup.total)}
+                            </span>
+                          </button>
+
+                          {/* Lista de transações individuais do favorecido (se expandido) */}
+                          {hasMultipleTransactions && isPayeeExpanded && (
+                            <div className="bg-white">
+                              {payeeGroup.transactions.map((transaction, txIdx) => (
+                                <button
+                                  key={txIdx}
+                                  onClick={() => handleTransactionClick(transaction)}
+                                  className="w-full px-4 py-2 pl-16 flex items-center justify-between hover:bg-slate-50 transition-colors text-left border-t border-slate-100"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-slate-700">
+                                      {format(new Date(transaction.date), "dd/MM/yyyy", { locale: ptBR })}
+                                    </p>
+                                    {transaction.notes && (
+                                      <p className="text-xs text-slate-500 mt-0.5 truncate">
+                                        {transaction.notes}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <span className={`font-medium text-xs ml-4 whitespace-nowrap flex-shrink-0 ${
+                                    type === 'income' ? 'text-emerald-600' : 'text-rose-600'
+                                  }`}>
+                                    R$ {formatCurrency(Math.abs(transaction.amount))}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        <span className={`font-semibold text-sm ml-4 whitespace-nowrap flex-shrink-0 ${
-                          type === 'income' ? 'text-emerald-600' : 'text-rose-600'
-                        }`}>
-                          R$ {formatCurrency(Math.abs(transaction.amount))}
-                        </span>
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
