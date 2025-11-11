@@ -26,11 +26,36 @@ const CATEGORY_NAMES = {
   outras_despesas: 'Outras Despesas',
 };
 
-function formatDescription(text) {
+function formatDescription(text, maxWords = 4) {
   if (!text) return '';
-  const cleaned = text.trim();
-  if (cleaned.length <= 40) return cleaned;
-  return cleaned.slice(0, 40) + '...';
+  
+  const toTitleCase = (str) => {
+    return str.toLowerCase().split(' ').map(word => {
+      if (['de', 'da', 'do', 'e', 'a', 'o', 'das', 'dos', 'para'].includes(word.toLowerCase())) {
+        return word.toLowerCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+  
+  // Remove frases como "recebido de", "enviado para", "pix enviado", etc
+  let cleaned = text
+    .replace(/pix\s+enviado\s+para\s+/gi, 'Pix ')
+    .replace(/pix\s+recebido\s+de\s+/gi, 'Pix ')
+    .replace(/ted\s+enviado\s+para\s+/gi, 'TED ')
+    .replace(/ted\s+recebido\s+de\s+/gi, 'TED ')
+    .replace(/transferencia\s+enviado\s+para\s+/gi, 'Transferência ')
+    .replace(/transferencia\s+recebido\s+de\s+/gi, 'Transferência ')
+    .replace(/recebido\s+de\s+/gi, '')
+    .replace(/enviado\s+para\s+/gi, '')
+    .replace(/recebido\s+/gi, '')
+    .replace(/enviado\s+/gi, '')
+    .trim();
+  
+  const words = cleaned.split(' ').filter(w => w.length > 0);
+  const abbreviated = words.slice(0, maxWords).join(' ');
+  
+  return toTitleCase(abbreviated);
 }
 
 const formatCurrency = (value) => {
