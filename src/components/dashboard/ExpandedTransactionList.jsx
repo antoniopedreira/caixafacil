@@ -83,20 +83,20 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
                   onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
                     {expandedCategory === category ? (
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                      <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
                     )}
                     <span className="font-semibold text-slate-900 text-sm">
                       {CATEGORY_NAMES[category] || category}
                     </span>
-                    <Badge variant="outline" className="text-xs">
-                      {items.length} {items.length === 1 ? 'transação' : 'transações'}
-                    </Badge>
+                    <span className="text-xs text-slate-500">
+                      ({items.length})
+                    </span>
                   </div>
-                  <span className={`font-bold text-sm ${
+                  <span className={`font-bold text-sm ml-4 flex-shrink-0 ${
                     type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                   }`}>
                     R$ {formatCurrency(total)}
@@ -124,7 +124,7 @@ export default function ExpandedTransactionList({ transactions, type, onClose, a
                             </p>
                           </div>
                         </div>
-                        <span className={`font-semibold text-sm ml-4 whitespace-nowrap ${
+                        <span className={`font-semibold text-sm ml-4 whitespace-nowrap flex-shrink-0 ${
                           type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                           R$ {formatCurrency(Math.abs(transaction.amount))}
