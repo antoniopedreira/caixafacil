@@ -29,103 +29,229 @@ import {
 } from "@/components/ui/popover";
 
 const BUSINESS_SEGMENTS = [
+  // Alimentação
   { value: "acougue", label: "🥩 Açougue" },
-  { value: "academia_fitness", label: "💪 Academia/Fitness" },
-  { value: "advocacia", label: "⚖️ Advocacia" },
-  { value: "agencia_marketing", label: "📣 Agência de Marketing" },
-  { value: "agencia_turismo", label: "✈️ Agência de Turismo" },
-  { value: "agencia_viagens", label: "🧳 Agência de Viagens" },
-  { value: "agronegocio", label: "🌾 Agronegócio" },
-  { value: "autoescola", label: "🚗 Autoescola" },
-  { value: "auto_pecas", label: "🔧 Auto Peças" },
-  { value: "banco_financeira", label: "🏦 Banco/Financeira" },
   { value: "bar_boteco", label: "🍺 Bar/Boteco" },
-  { value: "barbearia", label: "💈 Barbearia" },
-  { value: "bijuteria_acessorios", label: "💍 Bijuteria/Acessórios" },
-  { value: "buffet_eventos", label: "🎉 Buffet/Eventos" },
   { value: "cafeteria", label: "☕ Cafeteria" },
-  { value: "casa_construcao", label: "🏠 Casa de Construção" },
-  { value: "clinica_medica", label: "🏥 Clínica Médica" },
-  { value: "clinica_odontologica", label: "🦷 Clínica Odontológica" },
-  { value: "clinica_veterinaria", label: "🐾 Clínica Veterinária" },
   { value: "confeitaria_doces", label: "🧁 Confeitaria/Doces" },
-  { value: "construcao_civil", label: "🏗️ Construção Civil" },
-  { value: "consultoria_empresarial", label: "💼 Consultoria Empresarial" },
-  { value: "contabilidade", label: "📊 Contabilidade" },
-  { value: "coworking", label: "🖥️ Coworking" },
-  { value: "decoracao_interiores", label: "🛋️ Decoração/Interiores" },
-  { value: "delivery_marmita", label: "🍱 Delivery/Marmita" },
-  { value: "despachante", label: "📄 Despachante" },
-  { value: "distribuidora", label: "📦 Distribuidora" },
-  { value: "drogaria_farmacia", label: "💊 Drogaria/Farmácia" },
-  { value: "eletricista", label: "⚡ Eletricista" },
-  { value: "eletronica", label: "📱 Eletrônica" },
-  { value: "encanador_hidraulica", label: "🚰 Encanador/Hidráulica" },
-  { value: "engenharia", label: "👷 Engenharia" },
-  { value: "escola_curso", label: "📚 Escola/Curso" },
-  { value: "escritorio_advocacia", label: "⚖️ Escritório de Advocacia" },
-  { value: "estetica_beleza", label: "💅 Estética/Beleza" },
-  { value: "estudio_fotografia", label: "📷 Estúdio de Fotografia" },
-  { value: "estudio_tatuagem", label: "🎨 Estúdio de Tatuagem" },
-  { value: "eventos_producao", label: "🎭 Eventos/Produção" },
-  { value: "farmacia_manipulacao", label: "💊 Farmácia de Manipulação" },
-  { value: "fisioterapia", label: "🧘 Fisioterapia" },
-  { value: "floricultura", label: "🌸 Floricultura" },
+  { value: "delivery_comida", label: "🍱 Delivery de Comida" },
+  { value: "distribuidora_alimentos", label: "📦 Distribuidora de Alimentos" },
   { value: "food_truck", label: "🚚 Food Truck" },
-  { value: "fotografia", label: "📸 Fotografia" },
-  { value: "gesso_drywall", label: "🧱 Gesso/Drywall" },
-  { value: "grafica", label: "🖨️ Gráfica" },
   { value: "hamburgueria", label: "🍔 Hamburgueria" },
-  { value: "hotel_pousada", label: "🏨 Hotel/Pousada" },
-  { value: "imobiliaria", label: "🏘️ Imobiliária" },
-  { value: "importacao_exportacao", label: "🌐 Importação/Exportação" },
-  { value: "industria", label: "🏭 Indústria" },
-  { value: "informatica", label: "💻 Informática" },
-  { value: "jardinagem_paisagismo", label: "🌳 Jardinagem/Paisagismo" },
-  { value: "joalheria", label: "💎 Joalheria" },
-  { value: "laboratorio_analises", label: "🔬 Laboratório de Análises" },
   { value: "lanchonete", label: "🥪 Lanchonete" },
-  { value: "lavanderia", label: "🧺 Lavanderia" },
-  { value: "lava_jato", label: "🚿 Lava Jato" },
-  { value: "livraria", label: "📚 Livraria" },
-  { value: "loja_animais", label: "🐶 Loja de Animais" },
-  { value: "loja_calcados", label: "👞 Loja de Calçados" },
-  { value: "loja_informatica", label: "💻 Loja de Informática" },
-  { value: "loja_moveis", label: "🛏️ Loja de Móveis" },
-  { value: "loja_roupas", label: "👕 Loja de Roupas" },
-  { value: "loja_1_99", label: "🛍️ Loja 1,99" },
-  { value: "marcenaria", label: "🪵 Marcenaria" },
-  { value: "mecanica_auto", label: "🔧 Mecânica Auto" },
-  { value: "mercado_mini", label: "🛒 Mercado/Mini" },
-  { value: "moda_confeccao", label: "👗 Moda/Confecção" },
-  { value: "motel", label: "🏩 Motel" },
-  { value: "nutricionista", label: "🥗 Nutricionista" },
-  { value: "otica", label: "👓 Ótica" },
+  { value: "marmitaria", label: "🍱 Marmitaria" },
+  { value: "mercado_mini", label: "🛒 Mercado/Mini Mercado" },
   { value: "padaria", label: "🥖 Padaria" },
-  { value: "papelaria", label: "📝 Papelaria" },
-  { value: "pet_shop", label: "🐕 Pet Shop" },
-  { value: "pintura_predial", label: "🎨 Pintura Predial" },
+  { value: "pastelaria", label: "🥟 Pastelaria" },
   { value: "pizzaria", label: "🍕 Pizzaria" },
-  { value: "pousada", label: "🏡 Pousada" },
-  { value: "psicologia", label: "🧠 Psicologia" },
-  { value: "relojoaria", label: "⌚ Relojoaria" },
   { value: "restaurante", label: "🍽️ Restaurante" },
-  { value: "salao_beleza", label: "💇 Salão de Beleza" },
-  { value: "salao_festas", label: "🎊 Salão de Festas" },
-  { value: "sapataria", label: "👞 Sapataria" },
-  { value: "seguranca_eletronica", label: "🔒 Segurança Eletrônica" },
-  { value: "serralheria", label: "🔨 Serralheria" },
   { value: "sorveteria", label: "🍦 Sorveteria" },
   { value: "supermercado", label: "🏪 Supermercado" },
-  { value: "tabacaria", label: "🚬 Tabacaria" },
-  { value: "tapeçaria", label: "🛋️ Tapeçaria" },
-  { value: "taxi_transporte", label: "🚕 Taxi/Transporte" },
-  { value: "tecnologia_software", label: "💻 Tecnologia/Software" },
-  { value: "telefonia_celular", label: "📱 Telefonia/Celular" },
+  
+  // Saúde e Bem-estar
+  { value: "academia_fitness", label: "💪 Academia/Fitness" },
+  { value: "acupuntura", label: "💉 Acupuntura" },
+  { value: "clinica_fisioterapia", label: "🧘 Clínica de Fisioterapia" },
+  { value: "clinica_medica", label: "🏥 Clínica Médica" },
+  { value: "clinica_odontologica", label: "🦷 Clínica Odontológica" },
+  { value: "clinica_psicologia", label: "🧠 Clínica de Psicologia" },
+  { value: "clinica_veterinaria", label: "🐾 Clínica Veterinária" },
+  { value: "drogaria_farmacia", label: "💊 Drogaria/Farmácia" },
+  { value: "farmacia_manipulacao", label: "💊 Farmácia de Manipulação" },
+  { value: "laboratorio_analises", label: "🔬 Laboratório de Análises" },
+  { value: "nutricionista", label: "🥗 Nutricionista" },
+  { value: "personal_trainer", label: "💪 Personal Trainer" },
+  { value: "pilates", label: "🧘 Estúdio de Pilates" },
+  
+  // Beleza e Estética
+  { value: "barbearia", label: "💈 Barbearia" },
+  { value: "clinica_estetica", label: "💅 Clínica de Estética" },
+  { value: "depilacao", label: "✨ Depilação" },
+  { value: "designer_sobrancelhas", label: "✨ Designer de Sobrancelhas" },
+  { value: "estetica_automotiva", label: "🚗 Estética Automotiva" },
+  { value: "manicure_pedicure", label: "💅 Manicure/Pedicure" },
+  { value: "maquiagem_profissional", label: "💄 Maquiagem Profissional" },
+  { value: "salao_beleza", label: "💇 Salão de Beleza" },
+  { value: "spa", label: "🧖 Spa" },
+  
+  // Moda e Vestuário
+  { value: "alfaiataria", label: "👔 Alfaiataria" },
+  { value: "bijuteria_acessorios", label: "💍 Bijuteria/Acessórios" },
+  { value: "confeccao_roupas", label: "👗 Confecção de Roupas" },
+  { value: "costureira", label: "🪡 Costureira" },
+  { value: "joalheria", label: "💎 Joalheria" },
+  { value: "lavanderia", label: "🧺 Lavanderia" },
+  { value: "loja_calcados", label: "👞 Loja de Calçados" },
+  { value: "loja_roupas", label: "👕 Loja de Roupas" },
+  { value: "loja_lingerie", label: "👙 Loja de Lingerie" },
+  { value: "relojoaria", label: "⌚ Relojoaria" },
+  { value: "sapataria", label: "👞 Sapataria" },
   { value: "tinturaria", label: "👔 Tinturaria" },
-  { value: "torno_mecanico", label: "⚙️ Torno Mecânico" },
-  { value: "transporte_carga", label: "🚚 Transporte de Carga" },
+  
+  // Construção e Reformas
+  { value: "arquitetura", label: "📐 Arquitetura" },
+  { value: "azulejista", label: "🧱 Azulejista" },
+  { value: "britagem", label: "⛏️ Britagem" },
+  { value: "carpintaria", label: "🪵 Carpintaria" },
+  { value: "casa_construcao", label: "🏠 Casa de Construção" },
+  { value: "construtora", label: "🏗️ Construtora" },
+  { value: "decoracao_interiores", label: "🛋️ Decoração/Interiores" },
+  { value: "eletricista", label: "⚡ Eletricista" },
+  { value: "encanador_hidraulica", label: "🚰 Encanador/Hidráulica" },
+  { value: "engenharia_civil", label: "👷 Engenharia Civil" },
+  { value: "gesseiro", label: "🧱 Gesseiro" },
+  { value: "instalacao_ar_condicionado", label: "❄️ Instalação de Ar Condicionado" },
+  { value: "jardinagem_paisagismo", label: "🌳 Jardinagem/Paisagismo" },
+  { value: "marcenaria", label: "🪵 Marcenaria" },
+  { value: "marmoraria", label: "⬜ Marmoraria" },
+  { value: "pedreiro", label: "🧱 Pedreiro" },
+  { value: "pintor_predial", label: "🎨 Pintor Predial" },
+  { value: "serralheria", label: "🔨 Serralheria" },
+  { value: "tapeçaria", label: "🛋️ Tapeçaria" },
   { value: "vidracaria", label: "🪟 Vidraçaria" },
+  
+  // Automotivo
+  { value: "auto_eletrica", label: "🔌 Auto Elétrica" },
+  { value: "auto_pecas", label: "🔧 Auto Peças" },
+  { value: "borracharia", label: "🛞 Borracharia" },
+  { value: "despachante", label: "📄 Despachante" },
+  { value: "estacionamento", label: "🅿️ Estacionamento" },
+  { value: "funilaria_pintura", label: "🚗 Funilaria e Pintura" },
+  { value: "guincho", label: "🚛 Guincho" },
+  { value: "instalacao_insulfilm", label: "🚗 Instalação de Insulfilm" },
+  { value: "lava_jato", label: "🚿 Lava Jato" },
+  { value: "locadora_veiculos", label: "🚗 Locadora de Veículos" },
+  { value: "mecanica_auto", label: "🔧 Mecânica Auto" },
+  { value: "revenda_veiculos", label: "🚗 Revenda de Veículos" },
+  { value: "som_automotivo", label: "🔊 Som Automotivo" },
+  
+  // Comércio
+  { value: "antiquario", label: "🏺 Antiquário" },
+  { value: "casa_racao", label: "🐾 Casa de Ração" },
+  { value: "distribuidora", label: "📦 Distribuidora" },
+  { value: "eletrodomesticos", label: "🏠 Eletrodomésticos" },
+  { value: "eletronica", label: "📱 Eletrônica" },
+  { value: "ferragens", label: "🔩 Ferragens" },
+  { value: "floricultura", label: "🌸 Floricultura" },
+  { value: "importadora", label: "🌐 Importadora" },
+  { value: "livraria", label: "📚 Livraria" },
+  { value: "loja_1_99", label: "🛍️ Loja 1,99" },
+  { value: "loja_artesanato", label: "🎨 Loja de Artesanato" },
+  { value: "loja_brinquedos", label: "🧸 Loja de Brinquedos" },
+  { value: "loja_departamentos", label: "🏬 Loja de Departamentos" },
+  { value: "loja_informatica", label: "💻 Loja de Informática" },
+  { value: "loja_materiais_escritorio", label: "📝 Loja de Materiais de Escritório" },
+  { value: "loja_moveis", label: "🛏️ Loja de Móveis" },
+  { value: "otica", label: "👓 Ótica" },
+  { value: "papelaria", label: "📝 Papelaria" },
+  { value: "perfumaria", label: "🌺 Perfumaria" },
+  { value: "pet_shop", label: "🐕 Pet Shop" },
+  { value: "sex_shop", label: "💋 Sex Shop" },
+  { value: "tabacaria", label: "🚬 Tabacaria" },
+  
+  // Serviços Profissionais
+  { value: "advocacia", label: "⚖️ Advocacia" },
+  { value: "assessoria_empresarial", label: "💼 Assessoria Empresarial" },
+  { value: "cartorio_notas", label: "📜 Cartório de Notas" },
+  { value: "cartorio_registro", label: "📋 Cartório de Registro" },
+  { value: "coaching", label: "🎯 Coaching" },
+  { value: "consultoria_financeira", label: "💰 Consultoria Financeira" },
+  { value: "consultoria_rh", label: "👥 Consultoria de RH" },
+  { value: "contabilidade", label: "📊 Contabilidade" },
+  { value: "corretagem_imoveis", label: "🏘️ Corretagem de Imóveis" },
+  { value: "corretagem_seguros", label: "🛡️ Corretagem de Seguros" },
+  { value: "imobiliaria", label: "🏘️ Imobiliária" },
+  { value: "traducao", label: "🌐 Tradução" },
+  
+  // Educação
+  { value: "aulas_idiomas", label: "🗣️ Aulas de Idiomas" },
+  { value: "aulas_musica", label: "🎵 Aulas de Música" },
+  { value: "aulas_particulares", label: "📚 Aulas Particulares" },
+  { value: "autoescola", label: "🚗 Autoescola" },
+  { value: "curso_profissionalizante", label: "📚 Curso Profissionalizante" },
+  { value: "escola_educacao_infantil", label: "🧒 Escola de Educação Infantil" },
+  { value: "escola_ensino_fundamental", label: "📚 Escola de Ensino Fundamental" },
+  { value: "escola_ensino_medio", label: "🎓 Escola de Ensino Médio" },
+  { value: "faculdade", label: "🎓 Faculdade" },
+  
+  // Tecnologia
+  { value: "assistencia_tecnica_celular", label: "📱 Assistência Técnica de Celular" },
+  { value: "assistencia_tecnica_informatica", label: "💻 Assistência Técnica de Informática" },
+  { value: "desenvolvimento_software", label: "💻 Desenvolvimento de Software" },
+  { value: "desenvolvimento_web", label: "🌐 Desenvolvimento Web" },
+  { value: "designer_grafico", label: "🎨 Designer Gráfico" },
+  { value: "instalacao_cameras", label: "📹 Instalação de Câmeras" },
+  { value: "manutencao_computadores", label: "💻 Manutenção de Computadores" },
+  { value: "marketing_digital", label: "📱 Marketing Digital" },
+  { value: "seguranca_eletronica", label: "🔒 Segurança Eletrônica" },
+  { value: "telefonia_celular", label: "📱 Telefonia/Celular" },
+  
+  // Eventos e Entretenimento
+  { value: "agencia_viagens", label: "✈️ Agência de Viagens" },
+  { value: "aluguel_brinquedos_festa", label: "🎈 Aluguel de Brinquedos para Festa" },
+  { value: "buffet_eventos", label: "🎉 Buffet/Eventos" },
+  { value: "dj", label: "🎧 DJ" },
+  { value: "estudio_fotografia", label: "📷 Estúdio de Fotografia" },
+  { value: "estudio_tatuagem", label: "🎨 Estúdio de Tatuagem" },
+  { value: "filmagem_eventos", label: "🎥 Filmagem de Eventos" },
+  { value: "fotografo", label: "📸 Fotógrafo" },
+  { value: "producao_eventos", label: "🎭 Produção de Eventos" },
+  { value: "salao_festas", label: "🎊 Salão de Festas" },
+  
+  // Hospedagem
+  { value: "airbnb", label: "🏠 Aluguel por Temporada (Airbnb)" },
+  { value: "hotel", label: "🏨 Hotel" },
+  { value: "motel", label: "🏩 Motel" },
+  { value: "pousada", label: "🏡 Pousada" },
+  
+  // Indústria
+  { value: "confeccao_industrial", label: "🏭 Confecção Industrial" },
+  { value: "fabrica_alimentos", label: "🏭 Fábrica de Alimentos" },
+  { value: "fabrica_moveis", label: "🏭 Fábrica de Móveis" },
+  { value: "grafica", label: "🖨️ Gráfica" },
+  { value: "industria_metalurgica", label: "🏭 Indústria Metalúrgica" },
+  { value: "industria_plasticos", label: "🏭 Indústria de Plásticos" },
+  { value: "industria_textil", label: "🏭 Indústria Têxtil" },
+  { value: "serigrafia", label: "🖨️ Serigrafia" },
+  
+  // Agronegócio
+  { value: "agropecuaria", label: "🌾 Agropecuária" },
+  { value: "apicultura", label: "🐝 Apicultura" },
+  { value: "avicultura", label: "🐔 Avicultura" },
+  { value: "fazenda", label: "🚜 Fazenda" },
+  { value: "hortifruti", label: "🥬 Hortifruti" },
+  { value: "piscicultura", label: "🐟 Piscicultura" },
+  
+  // Transporte e Logística
+  { value: "agencia_turismo", label: "✈️ Agência de Turismo" },
+  { value: "courrier", label: "📦 Courrier" },
+  { value: "entregador_motoboy", label: "🏍️ Entregador/Motoboy" },
+  { value: "fretamento", label: "🚌 Fretamento" },
+  { value: "motoboy", label: "🏍️ Motoboy" },
+  { value: "mudancas", label: "🚚 Mudanças" },
+  { value: "taxi", label: "🚕 Taxi" },
+  { value: "transporte_cargas", label: "🚚 Transporte de Cargas" },
+  { value: "transporte_escolar", label: "🚌 Transporte Escolar" },
+  { value: "uber_99", label: "🚗 motorista Uber/99" },
+  
+  // Serviços Diversos
+  { value: "assistencia_tecnica_eletrodomesticos", label: "🔧 Assistência Técnica Eletrodomésticos" },
+  { value: "chaveiro", label: "🔑 Chaveiro" },
+  { value: "coworking", label: "🖥️ Coworking" },
+  { value: "dedetizacao", label: "🐜 Dedetização" },
+  { value: "limpeza_domestica", label: "🧹 Limpeza Doméstica" },
+  { value: "limpeza_empresarial", label: "🧹 Limpeza Empresarial" },
+  { value: "manutencao_predial", label: "🏢 Manutenção Predial" },
+  { value: "organizacao_eventos", label: "📋 Organização de Eventos" },
+  { value: "reciclagem", label: "♻️ Reciclagem" },
+  { value: "seguranca_patrimonial", label: "🛡️ Segurança Patrimonial" },
+  
+  // Outros
+  { value: "banco_financeira", label: "🏦 Banco/Financeira" },
+  { value: "casa_cambio", label: "💱 Casa de Câmbio" },
+  { value: "cooperativa", label: "🤝 Cooperativa" },
+  { value: "ong_associacao", label: "❤️ ONG/Associação" },
+  { value: "sindicato", label: "✊ Sindicato" },
   { value: "outros", label: "📦 Outros" },
 ].sort((a, b) => a.label.localeCompare(b.label));
 
@@ -159,6 +285,36 @@ const BRAZILIAN_STATES = [
   { value: "TO", label: "Tocantins" },
 ];
 
+const BRAZILIAN_CITIES = {
+  "AC": ["Rio Branco", "Cruzeiro do Sul", "Sena Madureira", "Tarauacá", "Feijó"],
+  "AL": ["Maceió", "Arapiraca", "Palmeira dos Índios", "Rio Largo", "Penedo", "União dos Palmares"],
+  "AP": ["Macapá", "Santana", "Laranjal do Jari", "Oiapoque", "Mazagão"],
+  "AM": ["Manaus", "Parintins", "Itacoatiara", "Manacapuru", "Coari", "Tefé", "Tabatinga"],
+  "BA": ["Salvador", "Feira de Santana", "Vitória da Conquista", "Camaçari", "Itabuna", "Juazeiro", "Lauro de Freitas", "Ilhéus", "Jequié", "Teixeira de Freitas", "Alagoinhas", "Barreiras", "Paulo Afonso", "Eunápolis", "Simões Filho", "Santo Antônio de Jesus", "Valença", "Candeias"],
+  "CE": ["Fortaleza", "Caucaia", "Juazeiro do Norte", "Maracanaú", "Sobral", "Crato", "Itapipoca", "Maranguape", "Iguatu", "Quixadá", "Canindé", "Pacajus", "Crateús"],
+  "DF": ["Brasília", "Taguatinga", "Ceilândia", "Samambaia", "Planaltina", "Águas Claras", "Gama", "Santa Maria", "Sobradinho"],
+  "ES": ["Vitória", "Vila Velha", "Serra", "Cariacica", "Viana", "Guarapari", "Cachoeiro de Itapemirim", "Linhares", "São Mateus", "Colatina", "Aracruz"],
+  "GO": ["Goiânia", "Aparecida de Goiânia", "Anápolis", "Rio Verde", "Luziânia", "Águas Lindas de Goiás", "Valparaíso de Goiás", "Trindade", "Formosa", "Novo Gama", "Itumbiara", "Senador Canedo", "Catalão", "Jataí", "Caldas Novas"],
+  "MA": ["São Luís", "Imperatriz", "São José de Ribamar", "Timon", "Caxias", "Codó", "Paço do Lumiar", "Açailândia", "Bacabal", "Balsas"],
+  "MT": ["Cuiabá", "Várzea Grande", "Rondonópolis", "Sinop", "Tangará da Serra", "Cáceres", "Sorriso", "Lucas do Rio Verde", "Barra do Garças", "Primavera do Leste"],
+  "MS": ["Campo Grande", "Dourados", "Três Lagoas", "Corumbá", "Ponta Porã", "Aquidauana", "Nova Andradina", "Maracaju", "Sidrolândia", "Naviraí"],
+  "MG": ["Belo Horizonte", "Uberlândia", "Contagem", "Juiz de Fora", "Betim", "Montes Claros", "Ribeirão das Neves", "Uberaba", "Governador Valadares", "Ipatinga", "Sete Lagoas", "Divinópolis", "Santa Luzia", "Ibirité", "Poços de Caldas", "Patos de Minas", "Teófilo Otoni", "Sabará", "Pouso Alegre", "Barbacena", "Varginha", "Conselheiro Lafaiete", "Araguari", "Itabira", "Passos", "Ubá", "Muriaé", "Alfenas", "Vespasiano", "Araxá"],
+  "PA": ["Belém", "Ananindeua", "Santarém", "Marabá", "Castanhal", "Parauapebas", "Itaituba", "Cametá", "Bragança", "Abaetetuba", "Marituba", "Altamira"],
+  "PB": ["João Pessoa", "Campina Grande", "Santa Rita", "Patos", "Bayeux", "Sousa", "Cajazeiras", "Guarabira", "Cabedelo", "Monteiro"],
+  "PR": ["Curitiba", "Londrina", "Maringá", "Ponta Grossa", "Cascavel", "São José dos Pinhais", "Foz do Iguaçu", "Colombo", "Guarapuava", "Paranaguá", "Araucária", "Toledo", "Apucarana", "Pinhais", "Campo Largo", "Almirante Tamandaré", "Umuarama", "Piraquara", "Cambé", "Sarandi", "Fazenda Rio Grande", "Paranavaí", "Francisco Beltrão", "Pato Branco", "Cianorte"],
+  "PE": ["Recife", "Jaboatão dos Guararapes", "Olinda", "Caruaru", "Petrolina", "Paulista", "Cabo de Santo Agostinho", "Camaragibe", "Garanhuns", "Vitória de Santo Antão", "Igarassu", "São Lourenço da Mata", "Abreu e Lima", "Santa Cruz do Capibaribe", "Ipojuca", "Serra Talhada", "Araripina", "Gravatá"],
+  "PI": ["Teresina", "Parnaíba", "Picos", "Piripiri", "Floriano", "Campo Maior", "Barras", "São Raimundo Nonato"],
+  "RJ": ["Rio de Janeiro", "São Gonçalo", "Duque de Caxias", "Nova Iguaçu", "Niterói", "Belford Roxo", "Campos dos Goytacazes", "São João de Meriti", "Petrópolis", "Volta Redonda", "Magé", "Macaé", "Itaboraí", "Cabo Frio", "Nova Friburgo", "Barra Mansa", "Angra dos Reis", "Mesquita", "Nilópolis", "Teresópolis", "Resende", "Araruama", "Queimados", "Rio das Ostras", "Saquarema", "Barra do Piraí"],
+  "RN": ["Natal", "Mossoró", "Parnamirim", "São Gonçalo do Amarante", "Macaíba", "Ceará-Mirim", "Caicó", "Assu", "Currais Novos"],
+  "RS": ["Porto Alegre", "Caxias do Sul", "Pelotas", "Canoas", "Santa Maria", "Gravataí", "Viamão", "Novo Hamburgo", "São Leopoldo", "Rio Grande", "Alvorada", "Passo Fundo", "Sapucaia do Sul", "Uruguaiana", "Santa Cruz do Sul", "Cachoeirinha", "Bagé", "Bento Gonçalves", "Erechim", "Guaíba", "Cachoeira do Sul", "Santana do Livramento", "Ijuí", "Alegrete"],
+  "RO": ["Porto Velho", "Ji-Paraná", "Ariquemes", "Vilhena", "Cacoal", "Jaru", "Rolim de Moura"],
+  "RR": ["Boa Vista", "Rorainópolis", "Caracaraí", "Mucajaí", "Pacaraima"],
+  "SC": ["Florianópolis", "Joinville", "Blumenau", "São José", "Criciúma", "Chapecó", "Itajaí", "Jaraguá do Sul", "Lages", "Palhoça", "Balneário Camboriú", "Brusque", "Tubarão", "São Bento do Sul", "Caçador", "Camboriú", "Navegantes", "Concórdia", "Rio do Sul", "Araranguá", "Gaspar", "Biguaçu", "Indaial", "Itapema"],
+  "SP": ["São Paulo", "Guarulhos", "Campinas", "São Bernardo do Campo", "Santo André", "Osasco", "São José dos Campos", "Ribeirão Preto", "Sorocaba", "Mauá", "São José do Rio Preto", "Mogi das Cruzes", "Santos", "Diadema", "Jundiaí", "Carapicuíba", "Piracicaba", "Bauru", "São Vicente", "Itaquaquecetuba", "Franca", "Guarujá", "Taubaté", "Praia Grande", "Limeira", "Suzano", "Taboão da Serra", "Sumaré", "Barueri", "Embu das Artes", "São Carlos", "Marília", "Indaiatuba", "Cotia", "Americana", "Jacareí", "Araraquara", "Itapevi", "Presidente Prudente", "Hortolândia", "Rio Claro", "Ferraz de Vasconcelos", "Araçatuba", "Itapecerica da Serra", "Francisco Morato", "São Caetano do Sul", "Mogi Guaçu", "Itapetininga", "Franco da Rocha", "Bragança Paulista", "Pindamonhangaba", "Guaratinguetá", "Jaú", "Botucatu", "Atibaia", "Araras", "Cubatão", "Caraguatatuba", "Santana de Parnaíba", "Valinhos", "Sertãozinho", "Votorantim", "Catanduva", "Salto"],
+  "SE": ["Aracaju", "Nossa Senhora do Socorro", "Lagarto", "Itabaiana", "São Cristóvão", "Estância", "Tobias Barreto"],
+  "TO": ["Palmas", "Araguaína", "Gurupi", "Porto Nacional", "Paraíso do Tocantins", "Colinas do Tocantins"],
+};
+
 export default function BusinessContextDialog({ open, onClose, onSave, user }) {
   const [formData, setFormData] = useState({
     business_segment: user?.business_segment || '',
@@ -172,12 +328,32 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
 
   const [openCombobox, setOpenCombobox] = useState(false);
   const [openStatesCombobox, setOpenStatesCombobox] = useState(false);
+  const [openCitiesCombobox, setOpenCitiesCombobox] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [cityInput, setCityInput] = useState('');
 
   const selectedSegment = useMemo(() => {
     return BUSINESS_SEGMENTS.find(s => s.value === formData.business_segment);
   }, [formData.business_segment]);
+
+  // Lista de cidades disponíveis baseada nos estados selecionados
+  const availableCities = useMemo(() => {
+    if (formData.operation_states.length === 0) return [];
+    
+    const cities = [];
+    formData.operation_states.forEach(stateValue => {
+      const stateCities = BRAZILIAN_CITIES[stateValue] || [];
+      stateCities.forEach(city => {
+        cities.push({
+          value: `${city}, ${stateValue}`,
+          label: `${city} (${stateValue})`,
+          city: city,
+          state: stateValue
+        });
+      });
+    });
+    
+    return cities.sort((a, b) => a.label.localeCompare(b.label));
+  }, [formData.operation_states]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -185,9 +361,18 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
   };
 
   const handleRemoveState = (stateValue) => {
+    // Remove o estado
+    const newStates = formData.operation_states.filter(s => s !== stateValue);
+    
+    // Remove cidades desse estado
+    const newCities = formData.operation_cities.filter(cityValue => {
+      return !cityValue.endsWith(`, ${stateValue}`);
+    });
+    
     setFormData({
       ...formData,
-      operation_states: formData.operation_states.filter(s => s !== stateValue)
+      operation_states: newStates,
+      operation_cities: newCities
     });
   };
 
@@ -196,23 +381,6 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
       ...formData,
       operation_cities: formData.operation_cities.filter(c => c !== cityValue)
     });
-  };
-
-  const handleAddCity = () => {
-    if (cityInput.trim() && !formData.operation_cities.includes(cityInput.trim())) {
-      setFormData({
-        ...formData,
-        operation_cities: [...formData.operation_cities, cityInput.trim()]
-      });
-      setCityInput('');
-    }
-  };
-
-  const handleCityKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddCity();
-    }
   };
 
   return (
@@ -290,7 +458,7 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
               </PopoverContent>
             </Popover>
             <p className="text-xs text-slate-500">
-              Digite para filtrar ou role a lista para ver todas as opções
+              {BUSINESS_SEGMENTS.length}+ opções disponíveis - digite para filtrar
             </p>
           </div>
 
@@ -431,45 +599,77 @@ export default function BusinessContextDialog({ open, onClose, onSave, user }) {
                 </div>
 
                 {/* Cidades */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Cidades específicas (opcional):</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Digite o nome da cidade e pressione Enter"
-                      value={cityInput}
-                      onChange={(e) => setCityInput(e.target.value)}
-                      onKeyDown={handleCityKeyDown}
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleAddCity}
-                      variant="outline"
-                      size="icon"
-                    >
-                      <Check className="w-4 h-4" />
-                    </Button>
+                {formData.operation_states.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Cidades específicas (opcional):</Label>
+                    <Popover open={openCitiesCombobox} onOpenChange={setOpenCitiesCombobox}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between"
+                          disabled={availableCities.length === 0}
+                        >
+                          Selecionar cidades
+                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Digite para buscar cidade..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
+                            <CommandGroup className="max-h-64 overflow-auto">
+                              {availableCities.map((city) => (
+                                <CommandItem
+                                  key={city.value}
+                                  value={city.label}
+                                  onSelect={() => {
+                                    if (!formData.operation_cities.includes(city.value)) {
+                                      setFormData({
+                                        ...formData,
+                                        operation_cities: [...formData.operation_cities, city.value]
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${
+                                      formData.operation_cities.includes(city.value)
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    }`}
+                                  />
+                                  {city.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <p className="text-xs text-slate-500">
+                      {availableCities.length} cidades disponíveis nos estados selecionados
+                    </p>
+                    
+                    {formData.operation_cities.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {formData.operation_cities.map((cityValue) => (
+                          <Badge key={cityValue} variant="secondary" className="gap-1">
+                            {cityValue}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCity(cityValue)}
+                              className="hover:bg-slate-300 rounded-full p-0.5"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-500">
-                    Ex: São Paulo, Rio de Janeiro, Belo Horizonte...
-                  </p>
-                  
-                  {formData.operation_cities.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {formData.operation_cities.map((city, index) => (
-                        <Badge key={index} variant="secondary" className="gap-1">
-                          {city}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveCity(city)}
-                            className="hover:bg-slate-300 rounded-full p-0.5"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             )}
           </div>
