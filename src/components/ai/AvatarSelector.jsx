@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,11 +14,20 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
   const [selectedAvatar, setSelectedAvatar] = useState(currentAvatar || 'avatar1');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Sincroniza o estado local quando o modal abre ou currentAvatar muda
+  useEffect(() => {
+    if (open && currentAvatar) {
+      setSelectedAvatar(currentAvatar);
+    }
+  }, [open, currentAvatar]);
+
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
       await onSelectAvatar(selectedAvatar);
-      // O onClose será chamado automaticamente no parent após salvar
+      // Reseta o loading após salvar
+      setIsLoading(false);
+      // O parent é responsável por fechar o modal
     } catch (error) {
       console.error('Error selecting avatar:', error);
       setIsLoading(false);
@@ -27,6 +36,8 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
 
   const handleClose = () => {
     if (!isLoading) {
+      // Reseta para o avatar atual ao cancelar
+      setSelectedAvatar(currentAvatar || 'avatar1');
       onClose();
     }
   };
@@ -38,6 +49,8 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen && !isLoading) {
+        // Reseta para o avatar atual ao fechar
+        setSelectedAvatar(currentAvatar || 'avatar1');
         onClose();
       }
     }}>
@@ -59,13 +72,18 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
               {maleAvatars.map((avatar) => (
                 <button
                   key={avatar.id}
-                  onClick={() => !isLoading && setSelectedAvatar(avatar.id)}
+                  type="button"
+                  onClick={() => {
+                    if (!isLoading) {
+                      setSelectedAvatar(avatar.id);
+                    }
+                  }}
                   disabled={isLoading}
                   className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
                     selectedAvatar === avatar.id
                       ? 'border-purple-500 bg-purple-50 shadow-lg'
                       : 'border-slate-200 bg-white hover:border-purple-300'
-                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {selectedAvatar === avatar.id && (
                     <div className="absolute top-3 right-3 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
@@ -94,13 +112,18 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
               {femaleAvatars.map((avatar) => (
                 <button
                   key={avatar.id}
-                  onClick={() => !isLoading && setSelectedAvatar(avatar.id)}
+                  type="button"
+                  onClick={() => {
+                    if (!isLoading) {
+                      setSelectedAvatar(avatar.id);
+                    }
+                  }}
                   disabled={isLoading}
                   className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
                     selectedAvatar === avatar.id
                       ? 'border-purple-500 bg-purple-50 shadow-lg'
                       : 'border-slate-200 bg-white hover:border-purple-300'
-                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {selectedAvatar === avatar.id && (
                     <div className="absolute top-3 right-3 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
@@ -123,6 +146,7 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button 
+            type="button"
             variant="outline" 
             onClick={handleClose}
             disabled={isLoading}
@@ -130,6 +154,7 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
             Cancelar
           </Button>
           <Button 
+            type="button"
             onClick={handleConfirm}
             disabled={isLoading}
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
