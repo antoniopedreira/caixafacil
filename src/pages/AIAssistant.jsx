@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,6 +24,8 @@ export default function AIAssistant() {
   const [showContextDialog, setShowContextDialog] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
+  const queryClient = useQueryClient();
+
   const { data: user, isLoading: loadingUser } = useQuery({
     queryKey: ['user'],
     queryFn: () => base44.auth.me(),
@@ -43,6 +45,9 @@ export default function AIAssistant() {
 
   const updateUserMutation = useMutation({
     mutationFn: (userData) => base44.auth.updateMe(userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    }
   });
 
   const scrollToBottom = () => {
@@ -64,11 +69,13 @@ export default function AIAssistant() {
     if (user && !user.business_segment && messages.length === 0) {
       setShowContextDialog(true);
     }
-    // Se não tem avatar escolhido, mostra o seletor
-    if (user && !user.flavio_avatar && messages.length === 0) {
-      setShowAvatarSelector(true);
+    // Se não tem avatar escolhido, mostra o seletor (só na primeira vez)
+    if (user && !user.flavio_avatar && messages.length === 0 && !showContextDialog) {
+      setTimeout(() => {
+        setShowAvatarSelector(true);
+      }, 500);
     }
-  }, [user, messages]);
+  }, [user, messages, showContextDialog]);
 
   const hasBusinessContext = useMemo(() => {
     return user?.business_segment && user?.business_name;
@@ -324,6 +331,7 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
   const handleSelectAvatar = async (avatarId) => {
     try {
       await updateUserMutation.mutateAsync({ flavio_avatar: avatarId });
+      setShowAvatarSelector(false);
     } catch (error) {
       console.error('Error saving avatar:', error);
     }

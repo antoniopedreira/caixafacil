@@ -12,14 +12,21 @@ import FlavioAvatar, { FLAVIO_AVATARS } from './FlavioAvatar';
 
 export default function AvatarSelector({ open, onClose, onSelectAvatar, currentAvatar }) {
   const [selectedAvatar, setSelectedAvatar] = useState(currentAvatar || 'avatar1');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleConfirm = () => {
-    onSelectAvatar(selectedAvatar);
-    onClose();
+  const handleConfirm = async () => {
+    setIsLoading(true);
+    try {
+      await onSelectAvatar(selectedAvatar);
+      // O onClose será chamado automaticamente no parent após salvar
+    } catch (error) {
+      console.error('Error selecting avatar:', error);
+      setIsLoading(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isLoading && onClose(isOpen)}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">Escolha o Avatar do Flávio</DialogTitle>
@@ -32,12 +39,13 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
           {Object.values(FLAVIO_AVATARS).map((avatar) => (
             <button
               key={avatar.id}
-              onClick={() => setSelectedAvatar(avatar.id)}
+              onClick={() => !isLoading && setSelectedAvatar(avatar.id)}
+              disabled={isLoading}
               className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 ${
                 selectedAvatar === avatar.id
                   ? 'border-purple-500 bg-purple-50 shadow-lg'
                   : 'border-slate-200 bg-white hover:border-purple-300'
-              }`}
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {selectedAvatar === avatar.id && (
                 <div className="absolute top-3 right-3 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
@@ -57,14 +65,26 @@ export default function AvatarSelector({ open, onClose, onSelectAvatar, currentA
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            disabled={isLoading}
+          >
             Cancelar
           </Button>
           <Button 
             onClick={handleConfirm}
+            disabled={isLoading}
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
           >
-            Confirmar Escolha
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Salvando...
+              </>
+            ) : (
+              'Confirmar Escolha'
+            )}
           </Button>
         </div>
       </DialogContent>
