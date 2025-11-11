@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw, User } from "lucide-react";
+import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw, User, Palette } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import ChatMessage from "../components/ai/ChatMessage";
 import SuggestedQuestions from "../components/ai/SuggestedQuestions";
 import BusinessContextDialog from "../components/ai/BusinessContextDialog";
+import FlavioAvatar from "../components/ai/FlavioAvatar";
+import AvatarSelector from "../components/ai/AvatarSelector";
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([]);
@@ -20,6 +22,7 @@ export default function AIAssistant() {
   const messagesEndRef = useRef(null);
   const messagesStartRef = useRef(null);
   const [showContextDialog, setShowContextDialog] = useState(false);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
   const { data: user, isLoading: loadingUser } = useQuery({
     queryKey: ['user'],
@@ -61,10 +64,18 @@ export default function AIAssistant() {
     if (user && !user.business_segment && messages.length === 0) {
       setShowContextDialog(true);
     }
+    // Se não tem avatar escolhido, mostra o seletor
+    if (user && !user.flavio_avatar && messages.length === 0) {
+      setShowAvatarSelector(true);
+    }
   }, [user, messages]);
 
   const hasBusinessContext = useMemo(() => {
     return user?.business_segment && user?.business_name;
+  }, [user]);
+
+  const selectedAvatar = useMemo(() => {
+    return user?.flavio_avatar || 'avatar1';
   }, [user]);
 
   // Análise financeira avançada
@@ -310,6 +321,14 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
     }
   };
 
+  const handleSelectAvatar = async (avatarId) => {
+    try {
+      await updateUserMutation.mutateAsync({ flavio_avatar: avatarId });
+    } catch (error) {
+      console.error('Error saving avatar:', error);
+    }
+  };
+
   const quickInsights = useMemo(() => {
     if (!financialData) return null;
 
@@ -369,9 +388,7 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
         <div className="bg-white rounded-xl shadow-lg p-4 mb-3 border border-purple-100">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-                <User className="w-6 h-6 text-white" />
-              </div>
+              <FlavioAvatar avatarId={selectedAvatar} size="md" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-lg font-bold text-slate-900">Flávio</h1>
@@ -389,6 +406,16 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
               </div>
             </div>
             <div className="flex gap-2 flex-shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAvatarSelector(true)}
+                className="gap-1.5 h-8 text-xs"
+                title="Trocar avatar do Flávio"
+              >
+                <Palette className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Avatar</span>
+              </Button>
               {messages.length > 0 && (
                 <Button
                   variant="outline"
@@ -469,8 +496,8 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-6 p-4">
-                <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                  <User className="w-12 h-12 text-purple-600" />
+                <div className="relative">
+                  <FlavioAvatar avatarId={selectedAvatar} size="xxl" className="animate-pulse" />
                 </div>
                 <div>
                   <h2 className="text-3xl font-bold text-slate-900 mb-3">
@@ -489,13 +516,11 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
               <>
                 <div ref={messagesStartRef} />
                 {messages.map((message, index) => (
-                  <ChatMessage key={index} message={message} />
+                  <ChatMessage key={index} message={message} avatarId={selectedAvatar} />
                 ))}
                 {isLoading && (
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
+                    <FlavioAvatar avatarId={selectedAvatar} size="sm" />
                     <div className="bg-slate-100 rounded-2xl rounded-tl-sm p-4">
                       <div className="flex gap-2 items-center">
                         <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -574,6 +599,13 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
         onClose={() => setShowContextDialog(false)}
         onSave={handleSaveContext}
         user={user}
+      />
+
+      <AvatarSelector
+        open={showAvatarSelector}
+        onClose={() => setShowAvatarSelector(false)}
+        onSelectAvatar={handleSelectAvatar}
+        currentAvatar={selectedAvatar}
       />
     </div>
   );

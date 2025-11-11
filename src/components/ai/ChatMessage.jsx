@@ -1,16 +1,15 @@
 import React from 'react';
-import { User as UserIcon, User } from 'lucide-react';
+import { User as UserIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import FlavioAvatar from './FlavioAvatar';
 
-export default function ChatMessage({ message }) {
+export default function ChatMessage({ message, avatarId = 'avatar1' }) {
   const isUser = message.role === 'user';
   
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
-        <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-          <User className="w-5 h-5 text-white" />
-        </div>
+        <FlavioAvatar avatarId={avatarId} size="sm" />
       )}
       
       <div className={`max-w-[80%] rounded-2xl p-4 ${
