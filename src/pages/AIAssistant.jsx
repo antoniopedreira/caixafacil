@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw, User, Palette, Home } from "lucide-react";
+import { Brain, Send, Sparkles, AlertCircle, Zap, TrendingUp, TrendingDown, Target, RotateCcw, User, Palette, Home, Menu, List } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -440,7 +440,7 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                   onClick={handleResetConversation}
                   className="gap-1.5 h-8 text-xs"
                 >
-                  <Home className="w-3.5 h-3.5" />
+                  <List className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Menu</span>
                 </Button>
               )}
@@ -582,7 +582,7 @@ Tô aqui pra ajudar de verdade. Bora fazer esse negócio crescer com saúde fina
                       onClick={handleResetConversation}
                       className="w-full gap-2 bg-white hover:bg-purple-50 border-purple-200 shadow-sm"
                     >
-                      <Home className="w-4 h-4" />
+                      <List className="w-4 h-4" />
                       Voltar para o menu de perguntas sugeridas
                     </Button>
                   </div>
