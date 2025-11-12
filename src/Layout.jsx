@@ -12,7 +12,8 @@ import {
   TrendingUp,
   Brain,
   Repeat,
-  List, // Changed from Menu to List
+  List, 
+  Bell, // Added Bell icon import
 } from "lucide-react";
 import {
   Sidebar,
@@ -78,6 +79,11 @@ const navigationItems = [
     title: "Conteúdos",
     url: createPageUrl("Content"),
     icon: BookOpen,
+  },
+  {
+    title: "Notificações",
+    url: createPageUrl("NotificationSettings"),
+    icon: Bell,
   },
 ];
 

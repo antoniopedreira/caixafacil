@@ -7,6 +7,7 @@ import BankConnections from './pages/BankConnections';
 import AIAssistant from './pages/AIAssistant';
 import RecurringExpenses from './pages/RecurringExpenses';
 import ManageBankAccounts from './pages/ManageBankAccounts';
+import NotificationSettings from './pages/NotificationSettings';
 import Layout from './Layout.jsx';
 
 
@@ -20,6 +21,7 @@ export const PAGES = {
     "AIAssistant": AIAssistant,
     "RecurringExpenses": RecurringExpenses,
     "ManageBankAccounts": ManageBankAccounts,
+    "NotificationSettings": NotificationSettings,
 }
 
 export const pagesConfig = {
