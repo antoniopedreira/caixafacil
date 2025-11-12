@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { FileText, Download, Mail, Calendar } from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { base44 } from "@/api/base44Client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -105,7 +106,7 @@ export default function ReportGenerator() {
                     📆 Mês Atual
                   </Label>
                   <p className="text-xs text-slate-500">
-                    {format(new Date(), "MMMM 'de' yyyy", { locale: { code: 'pt-BR' } })}
+                    {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}
                   </p>
                 </div>
               </div>
