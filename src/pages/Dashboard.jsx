@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 
 import AccountBalance from "../components/dashboard/AccountBalance";
 import MonthSummaryCards from "../components/dashboard/MonthSummaryCards";
-import UpcomingExpenses from "../components/dashboard/UpcomingExpenses";
 import RecentTransactions from "../components/dashboard/RecentTransactions";
 import ExpandedTransactionList from "../components/dashboard/ExpandedTransactionList";
 import SpendingTrends from "../components/dashboard/SpendingTrends";
@@ -23,7 +21,6 @@ import TopCategories from "../components/dashboard/TopCategories";
 import FinancialProjection from "../components/dashboard/FinancialProjection";
 import MonthlyAnalysisTable from "../components/dashboard/MonthlyAnalysisTable";
 import CashBalanceEvolution from "../components/dashboard/CashBalanceEvolution";
-import QuickInsights from "../components/dashboard/QuickInsights";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
@@ -275,13 +272,6 @@ export default function Dashboard() {
         transactions={transactions}
       />
 
-      {transactions.length > 0 && (
-        <QuickInsights 
-          transactions={transactions} 
-          recurringExpenses={recurringExpenses}
-        />
-      )}
-
       <Tabs defaultValue="overview" className="space-y-3">
         <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid h-9">
           <TabsTrigger value="overview" className="gap-2 text-sm">
@@ -362,8 +352,6 @@ export default function Dashboard() {
           {transactions.length > 0 && (
             <CashBalanceEvolution transactions={transactions} />
           )}
-
-          <UpcomingExpenses recurringExpenses={recurringExpenses} />
 
           <RecentTransactions transactions={transactions} />
         </TabsContent>
