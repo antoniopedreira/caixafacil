@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -22,7 +21,6 @@ import TopCategories from "../components/dashboard/TopCategories";
 import FinancialProjection from "../components/dashboard/FinancialProjection";
 import MonthlyAnalysisTable from "../components/dashboard/MonthlyAnalysisTable";
 import CashBalanceEvolution from "../components/dashboard/CashBalanceEvolution";
-import ReportGenerator from "../components/dashboard/ReportGenerator";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
@@ -292,26 +290,23 @@ export default function Dashboard() {
               <Calendar className="w-4 h-4" />
               Resumo do Período
             </h2>
-            <div className="flex items-center gap-2">
-              <ReportGenerator />
-              <Select value={selectedMonth} onValueChange={handleMonthChange}>
-                <SelectTrigger className="w-56 h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {monthOptions.map(option => (
-                    <SelectItem 
-                      key={option.value} 
-                      value={option.value}
-                      disabled={option.disabled}
-                      className={option.disabled ? 'text-slate-300 cursor-default' : ''}
-                    >
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedMonth} onValueChange={handleMonthChange}>
+              <SelectTrigger className="w-56 h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map(option => (
+                  <SelectItem 
+                    key={option.value} 
+                    value={option.value}
+                    disabled={option.disabled}
+                    className={option.disabled ? 'text-slate-300 cursor-default' : ''}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <MonthSummaryCards
