@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ import TopCategories from "../components/dashboard/TopCategories";
 import FinancialProjection from "../components/dashboard/FinancialProjection";
 import MonthlyAnalysisTable from "../components/dashboard/MonthlyAnalysisTable";
 import CashBalanceEvolution from "../components/dashboard/CashBalanceEvolution";
+import QuickInsights from "../components/dashboard/QuickInsights";
 
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState("0");
@@ -272,6 +274,13 @@ export default function Dashboard() {
         onToggleBalance={() => setShowBalance(!showBalance)}
         transactions={transactions}
       />
+
+      {transactions.length > 0 && (
+        <QuickInsights 
+          transactions={transactions} 
+          recurringExpenses={recurringExpenses}
+        />
+      )}
 
       <Tabs defaultValue="overview" className="space-y-3">
         <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid h-9">
