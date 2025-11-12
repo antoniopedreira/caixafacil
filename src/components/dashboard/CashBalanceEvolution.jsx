@@ -1,10 +1,19 @@
-import React, { useMemo } from 'react';
+
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Dot } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingUp, AlertCircle } from 'lucide-react';
+import { TrendingUp, AlertCircle, HelpCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -76,6 +85,9 @@ const CustomDot = (props) => {
 };
 
 export default function CashBalanceEvolution({ transactions }) {
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [showTrendDialog, setShowTrendDialog] = useState(false);
+
   const chartData = useMemo(() => {
     const now = new Date();
     const data = [];
@@ -110,7 +122,7 @@ export default function CashBalanceEvolution({ transactions }) {
       if (previous !== 0) {
         data[i].variation = ((current - previous) / Math.abs(previous)) * 100;
       } else {
-        data[i].variation = current > 0 ? 100 : (current < 0 ? -100 : 0);
+        data[i].variation = current > 0 ? 100 : (current < 0 ? -100 : 0); // Handle division by zero previous balance
       }
     }
     
@@ -127,91 +139,325 @@ export default function CashBalanceEvolution({ transactions }) {
   const currentBalance = chartData[chartData.length - 1]?.balance || 0;
   const currentDate = format(new Date(), "dd/MM/yyyy");
 
+  // Gera explicação detalhada da tendência
+  const trendExplanation = useMemo(() => {
+    if (chartData.length < 2) return '';
+    
+    const lastMonth = chartData[chartData.length - 1];
+    const previousMonth = chartData[chartData.length - 2];
+    const firstMonth = chartData[0];
+    
+    const monthChange = lastMonth.balance - previousMonth.balance;
+    const yearChange = lastMonth.balance - firstMonth.balance;
+    
+    const isGrowing = trend === 'up';
+    
+    let summary = '';
+    let details = '';
+    
+    if (isGrowing) {
+      summary = '📈 Situação Positiva';
+      details = `Seu caixa está crescendo! `;
+      
+      if (monthChange > 0) {
+        details += `No último mês, você aumentou seu saldo em R$ ${formatCurrency(monthChange)}. `;
+      }
+      
+      if (yearChange > 0) {
+        details += `Em 12 meses, seu caixa cresceu R$ ${formatCurrency(yearChange)}. `;
+      }
+      
+      details += `Isso indica que suas receitas estão superando suas despesas. Continue assim! 💪`;
+    } else {
+      summary = '📉 Atenção Necessária';
+      details = `Seu caixa está em declínio. `;
+      
+      if (monthChange < 0) {
+        details += `No último mês, você teve uma redução de R$ ${formatCurrency(Math.abs(monthChange))}. `;
+      }
+      
+      if (yearChange < 0) {
+        details += `Em 12 meses, seu caixa diminuiu R$ ${formatCurrency(Math.abs(yearChange))}. `;
+      }
+      
+      details += `Isso pode indicar que as despesas estão superando as receitas. Recomendamos revisar seus custos e buscar formas de aumentar a receita. 🎯`;
+    }
+    
+    return { summary, details };
+  }, [chartData, trend]);
+
   return (
-    <Card className="border-0 shadow-md">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg">Evolução do seu caixa</CardTitle>
-            <p className="text-xs text-slate-500 mt-1">(12 meses)</p>
+    <>
+      <Card className="border-0 shadow-md">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div>
+                <CardTitle className="text-lg">Evolução do seu caixa</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">(12 meses)</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                onClick={() => setShowInfoDialog(true)}
+              >
+                <HelpCircle className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`px-2 py-1 h-auto ${
+                  trend === 'up' 
+                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
+                    : 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                }`}
+                onClick={() => setShowTrendDialog(true)}
+              >
+                {trend === 'up' ? (
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                ) : (
+                  <TrendingUp className="w-3 h-3 mr-1 rotate-180" />
+                )}
+                <span className="text-xs font-semibold">
+                  {trend === 'up' ? 'Crescimento' : 'Declínio'}
+                </span>
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={
-              trend === 'up' 
-                ? 'bg-emerald-100 text-emerald-700' 
-                : 'bg-rose-100 text-rose-700'
-            }>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex items-start gap-3 bg-blue-50 rounded-lg p-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-blue-900">
+                <strong>Saldo atual:</strong> R$ {formatCurrency(currentBalance)}
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                Atualizado até {currentDate}. Clique nos pontos para ver detalhes de cada mês.
+              </p>
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis 
+                dataKey="month" 
+                stroke="#64748b" 
+                style={{ fontSize: '11px' }}
+                tick={{ fill: '#64748b' }}
+              />
+              <YAxis 
+                stroke="#64748b" 
+                style={{ fontSize: '11px' }}
+                tickFormatter={(value) => {
+                  const absValue = Math.abs(value);
+                  if (absValue >= 1000) {
+                    return `${value >= 0 ? '' : '-'}${(absValue / 1000).toFixed(0)}k`;
+                  }
+                  return value.toFixed(0);
+                }}
+                tick={{ fill: '#64748b' }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Line 
+                type="monotone" 
+                dataKey="balance" 
+                stroke="#3b82f6"
+                strokeWidth={3}
+                dot={<CustomDot />}
+                activeDot={{ r: 8 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+
+          <div className="flex items-center justify-center gap-4 mt-4 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+              <span>Saldo Positivo</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+              <span>Saldo Negativo</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-600 border-2 border-white"></div>
+              <span>Mês Atual</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dialog de Informação - O que é este gráfico */}
+      <Dialog open={showInfoDialog} onOpenChange={setShowInfoDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="w-5 h-5 text-blue-600" />
+              O que é a Evolução do Caixa?
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <p className="text-sm text-slate-700 leading-relaxed">
+                Este gráfico mostra a <strong>posição do seu caixa no final de cada mês</strong> durante os últimos 12 meses.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-lg">📊</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm text-slate-900 mb-1">
+                    Saldo Final do Mês
+                  </h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Cada ponto no gráfico representa o valor total que você tinha em caixa no último dia do mês.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-lg">💰</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm text-slate-900 mb-1">
+                    Como é calculado?
+                  </h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Soma todas as receitas e subtrai todas as despesas até o último dia do mês, mostrando quanto você tinha disponível.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-lg">📈</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm text-slate-900 mb-1">
+                    Para que serve?
+                  </h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Ver se seu caixa está crescendo (guardando dinheiro) ou diminuindo (gastando reservas) ao longo do tempo.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  <strong>Dica:</strong> Um caixa crescente indica que você está guardando dinheiro. Um caixa em queda pode indicar que está gastando mais do que ganha.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => setShowInfoDialog(false)}>
+              Entendi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Tendência - Explicação do crescimento/declínio */}
+      <Dialog open={showTrendDialog} onOpenChange={setShowTrendDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
               {trend === 'up' ? (
-                <TrendingUp className="w-3 h-3 mr-1" />
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
               ) : (
-                <TrendingUp className="w-3 h-3 mr-1 rotate-180" />
+                <TrendingUp className="w-5 h-5 text-rose-600 rotate-180" />
               )}
-              {trend === 'up' ? 'Crescimento' : 'Declínio'}
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4 flex items-start gap-3 bg-blue-50 rounded-lg p-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-blue-900">
-              <strong>Saldo atual:</strong> R$ {formatCurrency(currentBalance)}
-            </p>
-            <p className="text-xs text-blue-700 mt-1">
-              Atualizado até {currentDate}. Clique nos pontos para ver detalhes de cada mês.
-            </p>
-          </div>
-        </div>
+              {trendExplanation.summary}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className={`rounded-lg p-4 border ${
+              trend === 'up' 
+                ? 'bg-emerald-50 border-emerald-200' 
+                : 'bg-rose-50 border-rose-200'
+            }`}>
+              <p className="text-sm text-slate-700 leading-relaxed">
+                {trendExplanation.details}
+              </p>
+            </div>
 
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 5, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis 
-              dataKey="month" 
-              stroke="#64748b" 
-              style={{ fontSize: '11px' }}
-              tick={{ fill: '#64748b' }}
-            />
-            <YAxis 
-              stroke="#64748b" 
-              style={{ fontSize: '11px' }}
-              tickFormatter={(value) => {
-                const absValue = Math.abs(value);
-                if (absValue >= 1000) {
-                  return `${value >= 0 ? '' : '-'}${(absValue / 1000).toFixed(0)}k`;
-                }
-                return value.toFixed(0);
-              }}
-              tick={{ fill: '#64748b' }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Line 
-              type="monotone" 
-              dataKey="balance" 
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={<CustomDot />}
-              activeDot={{ r: 8 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+            {trend === 'up' ? (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm text-slate-900">
+                  🎯 Continue fazendo:
+                </h4>
+                <ul className="space-y-2 text-xs text-slate-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-600 mt-0.5">✓</span>
+                    <span>Mantendo o controle das despesas</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-600 mt-0.5">✓</span>
+                    <span>Buscando aumentar suas receitas</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-600 mt-0.5">✓</span>
+                    <span>Construindo uma reserva financeira sólida</span>
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-sm text-slate-900">
+                  💡 Ações recomendadas:
+                </h4>
+                <ul className="space-y-2 text-xs text-slate-600">
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 mt-0.5">•</span>
+                    <span>Revise e reduza despesas desnecessárias</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 mt-0.5">•</span>
+                    <span>Busque formas de aumentar suas receitas</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 mt-0.5">•</span>
+                    <span>Analise onde seu dinheiro está sendo gasto</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 mt-0.5">•</span>
+                    <span>Converse com o Flávio (Assistente IA) para dicas personalizadas</span>
+                  </li>
+                </ul>
+              </div>
+            )}
 
-        <div className="flex items-center justify-center gap-4 mt-4 text-xs text-slate-600">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-            <span>Saldo Positivo</span>
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-900 leading-relaxed">
+                  <strong>Lembre-se:</strong> A evolução do caixa é apenas um indicador. Analise também suas receitas, despesas e fluxo de caixa mensal para ter uma visão completa.
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-            <span>Saldo Negativo</span>
+
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => setShowTrendDialog(false)}>
+              Fechar
+            </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-600 border-2 border-white"></div>
-            <span>Mês Atual</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
