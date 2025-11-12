@@ -192,18 +192,16 @@ export default function CashBalanceEvolution({ transactions }) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div>
-                <CardTitle className="text-lg">Evolução do seu caixa</CardTitle>
-                <p className="text-xs text-slate-500 mt-1">(12 meses)</p>
-              </div>
+              <CardTitle className="text-lg">Evolução do seu caixa</CardTitle>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="h-6 w-6 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
                 onClick={() => setShowInfoDialog(true)}
               >
                 <HelpCircle className="w-4 h-4" />
               </Button>
+              <p className="text-xs text-slate-500">(12 meses)</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
