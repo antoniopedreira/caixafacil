@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -12,8 +11,8 @@ import {
   TrendingUp,
   Brain,
   Repeat,
-  List, 
-  Bell, // Added Bell icon import
+  Menu, 
+  Bell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -184,7 +183,7 @@ export default function Layout({ children, currentPageName }) {
               {/* Botão de menu destacado e maior */}
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-2 hover:shadow-xl transition-all active:scale-95">
                 <SidebarTrigger className="text-white hover:bg-transparent">
-                  <List className="w-6 h-6" /> {/* Changed from Menu to List */}
+                  <Menu className="w-6 h-6" />
                 </SidebarTrigger>
               </div>
               
