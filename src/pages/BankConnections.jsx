@@ -48,7 +48,7 @@ export default function BankConnections() {
 
   const syncMutation = useMutation({
     mutationFn: async (connectionId) => {
-      const response = await base44.functions.invoke('syncIniciadorTransactions', { connectionId });
+      const response = await base44.functions.invoke('syncPluggyTransactions', { connectionId });
 
       if (!response.data.success) {
         throw new Error(response.data.error || 'Erro ao sincronizar');
@@ -79,13 +79,13 @@ export default function BankConnections() {
         throw new Error('Conexão não encontrada');
       }
       
-      // Deleta no Iniciador
-      const response = await base44.functions.invoke('deleteIniciadorConsent', { 
-        consentId: connection.pluggy_item_id 
+      // Deleta no Pluggy
+      const response = await base44.functions.invoke('deletePluggyItem', { 
+        itemId: connection.pluggy_item_id 
       });
 
       if (!response.data.success) {
-        console.warn('Erro ao deletar no Iniciador:', response.data.error);
+        console.warn('Erro ao deletar no Pluggy:', response.data.error);
       }
 
       // Deleta localmente
@@ -124,7 +124,7 @@ export default function BankConnections() {
           Conexões Bancárias
         </h1>
         <p className="text-slate-600">
-          Conecte seus bancos via <strong>Iniciador</strong> e sincronize transações automaticamente
+          Conecte seus bancos via <strong>Pluggy</strong> e sincronize transações automaticamente
         </p>
       </div>
 
@@ -177,16 +177,16 @@ export default function BankConnections() {
       <Alert className="border-orange-200 bg-orange-50">
         <AlertCircle className="h-4 w-4 text-orange-600" />
         <AlertDescription className="text-orange-900">
-          <strong>🚀 Passo a passo para ativar (INICIADOR):</strong>
+          <strong>🚀 Passo a passo para ativar (PLUGGY):</strong>
           <ol className="list-decimal list-inside mt-2 space-y-1">
-            <li>Crie uma conta gratuita em <a href="https://dashboard.iniciador.com.br" target="_blank" rel="noopener noreferrer" className="underline font-semibold">dashboard.iniciador.com.br</a></li>
+            <li>Crie uma conta gratuita em <a href="https://dashboard.pluggy.ai" target="_blank" rel="noopener noreferrer" className="underline font-semibold">dashboard.pluggy.ai</a></li>
             <li>Acesse <strong>"API Keys"</strong> ou <strong>"Credenciais"</strong></li>
             <li>Copie seu <strong>Client ID</strong> e <strong>Client Secret</strong></li>
             <li>No CaixaFácil, vá em <strong>Dashboard → Settings → Secrets</strong></li>
             <li>Adicione os secrets:
               <ul className="list-disc list-inside ml-4 mt-1">
-                <li><code className="bg-orange-100 px-1 rounded">INICIADOR_CLIENT_ID</code> = seu Client ID</li>
-                <li><code className="bg-orange-100 px-1 rounded">INICIADOR_CLIENT_SECRET</code> = seu Client Secret</li>
+                <li><code className="bg-orange-100 px-1 rounded">PLUGGY_CLIENT_ID</code> = seu Client ID</li>
+                <li><code className="bg-orange-100 px-1 rounded">PLUGGY_CLIENT_SECRET</code> = seu Client Secret</li>
               </ul>
             </li>
             <li>Volte aqui e clique em <strong>"Conectar Banco"</strong> 🎉</li>
@@ -223,7 +223,7 @@ export default function BankConnections() {
             {connections.length === 0 ? 'Conecte seu Primeiro Banco' : 'Adicionar Outro Banco'}
           </h3>
           <p className="text-slate-600 mb-6">
-            Conecte de forma segura usando <strong>Open Banking</strong> através do <strong>Iniciador</strong>
+            Conecte de forma segura usando <strong>Open Banking</strong> através do <strong>Pluggy</strong>
           </p>
           
           <ConnectBankButton 
@@ -250,7 +250,7 @@ export default function BankConnections() {
       {/* Como funciona */}
       <Card>
         <CardContent className="p-6">
-          <h3 className="font-semibold text-slate-900 mb-4">Como Funciona a Conexão com o Iniciador</h3>
+          <h3 className="font-semibold text-slate-900 mb-4">Como Funciona a Conexão com o Pluggy</h3>
           <div className="space-y-4">
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold flex-shrink-0">

@@ -15,21 +15,21 @@ export default function ConnectBankButton({ onSuccess }) {
   }, []);
 
   const loadScript = () => {
-    console.log('🔄 Carregando Iniciador Connect...');
+    console.log('🔄 Carregando Pluggy Connect...');
     
-    if (window.IniciadorConnect) {
-      console.log('✅ IniciadorConnect já disponível');
+    if (window.PluggyConnect) {
+      console.log('✅ PluggyConnect já disponível');
       setScriptLoaded(true);
       setLoadingScript(false);
       return;
     }
 
     // Remove scripts antigos
-    const oldScripts = document.querySelectorAll('script[src*="iniciador"]');
+    const oldScripts = document.querySelectorAll('script[src*="pluggy"]');
     oldScripts.forEach(s => s.remove());
 
     const script = document.createElement('script');
-    script.src = 'https://cdn.iniciador.com.br/widget/v1/iniciador-connect.js';
+    script.src = 'https://cdn.pluggy.ai/connect/v3/pluggy-connect.js';
     script.async = true;
     
     script.onload = () => {
@@ -38,8 +38,8 @@ export default function ConnectBankButton({ onSuccess }) {
       let attempts = 0;
       const checkInterval = setInterval(() => {
         attempts++;
-        if (window.IniciadorConnect) {
-          console.log('✅ IniciadorConnect pronto!');
+        if (window.PluggyConnect) {
+          console.log('✅ PluggyConnect pronto!');
           clearInterval(checkInterval);
           setScriptLoaded(true);
           setLoadingScript(false);
@@ -53,7 +53,7 @@ export default function ConnectBankButton({ onSuccess }) {
     
     script.onerror = () => {
       console.error('❌ Erro ao carregar CDN');
-      setError(`⚠️ Não foi possível carregar o Iniciador Connect.
+      setError(`⚠️ Não foi possível carregar o Pluggy Connect.
 
 SOLUÇÕES:
 1. Desative bloqueadores de anúncios
@@ -67,17 +67,17 @@ SOLUÇÕES:
   };
 
   const connectBank = async () => {
-    console.log('🚀 Conectando banco via Iniciador...');
+    console.log('🚀 Conectando banco via Pluggy...');
     setLoading(true);
     setError(null);
 
     try {
-      if (!window.IniciadorConnect) {
-        throw new Error('Iniciador não está carregado. Recarregue a página (F5).');
+      if (!window.PluggyConnect) {
+        throw new Error('Pluggy não está carregado. Recarregue a página (F5).');
       }
 
       console.log('🔑 Solicitando token...');
-      const response = await base44.functions.invoke('createIniciadorToken', {});
+      const response = await base44.functions.invoke('createPluggyConnectToken', {});
 
       if (!response.data?.success) {
         throw new Error(response.data?.error || 'Erro ao criar token');
@@ -89,21 +89,12 @@ SOLUÇÕES:
 
       console.log('✅ Token obtido');
 
-      const iniciadorConnect = new window.IniciadorConnect({
-        token: response.data.connectToken,
-        environment: 'production',
-        onSuccess: async (data) => {
-          console.log('✅ Banco conectado!', data);
-          if (onSuccess) await onSuccess({
-            item: {
-              id: data.consent_id,
-              connector: {
-                name: data.institution_name || 'Banco',
-                imageUrl: data.institution_logo || '',
-                id: data.institution_id
-              }
-            }
-          });
+      const pluggyConnect = new window.PluggyConnect({
+        connectToken: response.data.connectToken,
+        includeSandbox: false,
+        onSuccess: async (itemData) => {
+          console.log('✅ Banco conectado!', itemData);
+          if (onSuccess) await onSuccess(itemData);
           setLoading(false);
         },
         onError: (error) => {
@@ -117,7 +108,7 @@ SOLUÇÕES:
         },
       });
 
-      iniciadorConnect.open();
+      pluggyConnect.init();
       
     } catch (err) {
       console.error('❌ Erro:', err);
@@ -125,15 +116,15 @@ SOLUÇÕES:
       let errorMsg = err.message || 'Erro desconhecido';
       
       if (errorMsg.includes('Credenciais') || errorMsg.includes('não configuradas')) {
-        errorMsg = `⚠️ CONFIGURE AS CREDENCIAIS DO INICIADOR
+        errorMsg = `⚠️ CONFIGURE AS CREDENCIAIS DO PLUGGY
 
-1. Acesse: https://dashboard.iniciador.com.br
+1. Acesse: https://dashboard.pluggy.ai
 2. Faça login e vá em "API Keys"
 3. Copie seu Client ID e Client Secret
 4. No CaixaFácil: Dashboard → Settings → Secrets
 5. Adicione:
-   • INICIADOR_CLIENT_ID
-   • INICIADOR_CLIENT_SECRET
+   • PLUGGY_CLIENT_ID
+   • PLUGGY_CLIENT_SECRET
 6. Volte aqui e tente novamente!`;
       }
       
@@ -148,7 +139,7 @@ SOLUÇÕES:
         <Alert className="border-blue-200 bg-blue-50">
           <AlertDescription className="text-blue-900 flex items-center gap-2 text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Carregando componente do Iniciador...
+            Carregando componente do Pluggy...
           </AlertDescription>
         </Alert>
       )}
@@ -157,7 +148,7 @@ SOLUÇÕES:
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertDescription className="text-green-900 text-sm">
-            ✅ Iniciador Connect carregado! Pronto para conectar.
+            ✅ Pluggy Connect carregado! Pronto para conectar.
           </AlertDescription>
         </Alert>
       )}
