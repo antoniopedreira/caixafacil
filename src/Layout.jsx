@@ -61,7 +61,7 @@ const navigationItems = [
   },
   {
     title: "Conexões Bancárias",
-    url: createPageUrl("BankConnections"),
+    url: createPageUrl("BankConnectionsNew"),
     icon: Building2,
   },
   {
