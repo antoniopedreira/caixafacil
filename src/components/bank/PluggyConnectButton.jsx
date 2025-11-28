@@ -22,6 +22,7 @@ export default function PluggyConnectButton({ onSuccess }) {
     try {
       // Se já existe, está pronto
       if (window.PluggyConnect) {
+        console.log('✅ PluggyConnect já disponível');
         setScriptReady(true);
         setLoadingScript(false);
         return;
@@ -30,34 +31,69 @@ export default function PluggyConnectButton({ onSuccess }) {
       // Remove scripts antigos do Pluggy
       document.querySelectorAll('script[src*="pluggy"]').forEach(s => s.remove());
 
-      // Cria novo script
-      const script = document.createElement('script');
-      script.src = 'https://cdn.pluggy.ai/connect/v3/pluggy-connect.js';
-      script.async = true;
+      console.log('📦 Carregando script Pluggy...');
 
-      await new Promise((resolve, reject) => {
-        script.onload = () => {
-          // Aguarda objeto ficar disponível (máx 5s)
-          let attempts = 0;
-          const check = setInterval(() => {
-            attempts++;
-            if (window.PluggyConnect) {
-              clearInterval(check);
-              resolve();
-            } else if (attempts > 50) {
-              clearInterval(check);
-              reject(new Error('Pluggy não inicializou'));
-            }
-          }, 100);
-        };
-        script.onerror = () => reject(new Error('Falha ao carregar script'));
-        document.head.appendChild(script);
-      });
+      // Tenta múltiplas URLs
+      const urls = [
+        'https://cdn.pluggy.ai/connect/v3/pluggy-connect.js',
+        'https://cdn.pluggy.ai/pluggy-connect/pluggy-connect.js'
+      ];
+
+      let loaded = false;
+
+      for (const url of urls) {
+        if (loaded) break;
+        
+        try {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = true;
+            script.crossOrigin = 'anonymous';
+
+            const timeout = setTimeout(() => {
+              reject(new Error('Timeout'));
+            }, 8000);
+
+            script.onload = () => {
+              clearTimeout(timeout);
+              let attempts = 0;
+              const check = setInterval(() => {
+                attempts++;
+                if (window.PluggyConnect) {
+                  clearInterval(check);
+                  loaded = true;
+                  resolve();
+                } else if (attempts > 30) {
+                  clearInterval(check);
+                  reject(new Error('Objeto não disponível'));
+                }
+              }, 100);
+            };
+
+            script.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error('Erro de rede'));
+            };
+
+            document.head.appendChild(script);
+          });
+          
+          console.log('✅ Script carregado de:', url);
+          loaded = true;
+        } catch (e) {
+          console.warn('❌ Falha em:', url, e.message);
+        }
+      }
+
+      if (!loaded) {
+        throw new Error('Não foi possível carregar o Pluggy. Desative bloqueadores de anúncios ou use aba anônima.');
+      }
 
       setScriptReady(true);
     } catch (err) {
       console.error('Erro ao carregar Pluggy:', err);
-      setError('Falha ao carregar script');
+      setError(err.message || 'Falha ao carregar script');
     } finally {
       setLoadingScript(false);
     }
