@@ -148,20 +148,38 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
           <div className="flex items-center justify-between mb-1">
             <div>
               <span className="text-emerald-100 text-xs font-medium">Saldo bancário</span>
-              <p className="text-emerald-100 text-[10px] mt-0.5">
-                Atualizado há 5 minutos
-              </p>
             </div>
-            <button
-              onClick={onToggleBalance}
-              className="p-1 hover:bg-emerald-400/30 rounded-lg transition-colors"
-            >
-              {showBalance ? (
-                <Eye className="w-4 h-4" />
-              ) : (
-                <EyeOff className="w-4 h-4" />
-              )}
-            </button>
+            <div className="flex items-center gap-1">
+              <Button
+                onClick={handleRefreshData}
+                disabled={isRefreshing || isDisabled}
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-white hover:bg-emerald-400/30 text-xs gap-1"
+              >
+                {isRefreshing ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Atualizando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3" />
+                    Atualizar
+                  </>
+                )}
+              </Button>
+              <button
+                onClick={onToggleBalance}
+                className="p-1 hover:bg-emerald-400/30 rounded-lg transition-colors"
+              >
+                {showBalance ? (
+                  <Eye className="w-4 h-4" />
+                ) : (
+                  <EyeOff className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="mb-1.5">
