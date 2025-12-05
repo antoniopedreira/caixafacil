@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -7,9 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, EyeOff, TrendingUp, TrendingDown, HelpCircle } from "lucide-react";
+import { Eye, EyeOff, TrendingUp, TrendingDown, HelpCircle, RefreshCw, Loader2 } from "lucide-react";
 import { subMonths, startOfMonth, isBefore, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from "@/components/ui/use-toast";
 
 // Função para formatar valor com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
@@ -79,17 +81,17 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
   return (
     <>
       <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-xl text-white">
-        <div className="p-4">
+        <div className="p-3">
           <div className="flex items-center justify-between mb-1">
             <div>
-              <span className="text-emerald-100 text-sm font-medium">Saldo bancário</span>
-              <p className="text-emerald-100 text-xs mt-0.5">
+              <span className="text-emerald-100 text-xs font-medium">Saldo bancário</span>
+              <p className="text-emerald-100 text-[10px] mt-0.5">
                 Atualizado há 5 minutos
               </p>
             </div>
             <button
               onClick={onToggleBalance}
-              className="p-1.5 hover:bg-emerald-400/30 rounded-lg transition-colors"
+              className="p-1 hover:bg-emerald-400/30 rounded-lg transition-colors"
             >
               {showBalance ? (
                 <Eye className="w-4 h-4" />
@@ -99,37 +101,37 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
             </button>
           </div>
 
-          <div className="mb-2">
+          <div className="mb-1.5">
             {showBalance ? (
               <>
-                <h2 className="text-3xl font-bold">
+                <h2 className="text-2xl font-bold">
                   R$ {formatCurrency(balance)}
                 </h2>
                 
                 {/* Análise comparativa */}
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md ${
                     previousMonthComparison.isPositive 
                       ? 'bg-emerald-400/30' 
                       : 'bg-rose-400/30'
                   }`}>
                     {previousMonthComparison.isPositive ? (
-                      <TrendingUp className="w-3.5 h-3.5" />
+                      <TrendingUp className="w-3 h-3" />
                     ) : (
-                      <TrendingDown className="w-3.5 h-3.5" />
+                      <TrendingDown className="w-3 h-3" />
                     )}
-                    <span className="text-xs font-semibold">
+                    <span className="text-[10px] font-semibold">
                       {Math.abs(previousMonthComparison.variation).toFixed(1)}%
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-emerald-100 text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="text-emerald-100 text-[10px]">
                       vs mês anterior R$ {formatCurrency(previousMonthComparison.previousBalance)}
                     </span>
                     <div
                       onClick={handleInfoClick}
                       onTouchStart={handleInfoClick}
-                      className="flex items-center justify-center w-9 h-9 hover:bg-emerald-400/30 active:bg-emerald-400/40 rounded-full transition-colors cursor-pointer"
+                      className="flex items-center justify-center w-7 h-7 hover:bg-emerald-400/30 active:bg-emerald-400/40 rounded-full transition-colors cursor-pointer"
                       style={{
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
@@ -138,18 +140,18 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
                         zIndex: 10
                       }}
                     >
-                      <HelpCircle className="w-6 h-6 text-emerald-100" />
+                      <HelpCircle className="w-5 h-5 text-emerald-100" />
                     </div>
                   </div>
                 </div>
               </>
             ) : (
-              <h2 className="text-3xl font-bold">R$ ••••••</h2>
+              <h2 className="text-2xl font-bold">R$ ••••••</h2>
             )}
           </div>
 
           <Select value={selectedAccount} onValueChange={onAccountChange}>
-            <SelectTrigger className="bg-emerald-400/30 border-0 text-white hover:bg-emerald-400/40 h-9">
+            <SelectTrigger className="bg-emerald-400/30 border-0 text-white hover:bg-emerald-400/40 h-8 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
