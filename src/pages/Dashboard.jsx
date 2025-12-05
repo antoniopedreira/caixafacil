@@ -23,6 +23,7 @@ import MonthlyAnalysisTable from "../components/dashboard/MonthlyAnalysisTable";
 import CashBalanceEvolution from "../components/dashboard/CashBalanceEvolution";
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
   const [selectedMonth, setSelectedMonth] = useState("0");
   const [selectedAccount, setSelectedAccount] = useState("all");
   const [showBalance, setShowBalance] = useState(true);
