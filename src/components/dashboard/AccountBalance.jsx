@@ -21,8 +21,71 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-export default function AccountBalance({ balance, selectedAccount, onAccountChange, accounts, showBalance, onToggleBalance, transactions = [] }) {
+export default function AccountBalance({ balance, selectedAccount, onAccountChange, accounts, showBalance, onToggleBalance, transactions = [], bankConnections = [], userId, onRefreshData }) {
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDisabled, setIsDisabled] = useState(false);
+  const { toast } = useToast();
+
+  const handleRefreshData = async () => {
+    // Pega o primeiro itemId disponível das conexões
+    const connection = bankConnections?.[0];
+    const itemId = connection?.pluggy_item_id;
+
+    if (!itemId) {
+      toast({
+        title: "Nenhuma conta conectada",
+        description: "Conecte uma conta bancária primeiro.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsRefreshing(true);
+    setIsDisabled(true);
+
+    try {
+      const response = await fetch('https://grifoworkspace.app.n8n.cloud/webhook/sync-pluggy-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itemId: itemId,
+          userId: userId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha na sincronização');
+      }
+
+      toast({
+        title: "Dados atualizados com sucesso!",
+        description: "Suas transações foram sincronizadas.",
+      });
+
+      // Recarrega os dados da tela
+      if (onRefreshData) {
+        onRefreshData();
+      }
+
+    } catch (error) {
+      console.error('Erro ao atualizar:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+      
+      // Mantém desabilitado por 15 segundos
+      setTimeout(() => {
+        setIsDisabled(false);
+      }, 15000);
+    }
+  };
 
   // Calcula o saldo do mesmo dia do mês anterior
   const previousMonthComparison = useMemo(() => {
