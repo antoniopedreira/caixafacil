@@ -287,6 +287,9 @@ export default function Dashboard() {
         showBalance={showBalance}
         onToggleBalance={() => setShowBalance(!showBalance)}
         transactions={transactions}
+        bankConnections={bankConnections}
+        userId={user?.id}
+        onRefreshData={handleRefreshData}
       />
 
       <Tabs defaultValue="overview" className="space-y-3">
