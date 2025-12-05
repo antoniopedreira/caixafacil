@@ -46,7 +46,23 @@ export default function Dashboard() {
     initialData: [],
   });
 
-  const isLoading = loadingTransactions || loadingRecurring;
+  const { data: bankConnections, isLoading: loadingConnections } = useQuery({
+    queryKey: ['bank-connections'],
+    queryFn: () => base44.entities.BankConnection.list('-created_date'),
+    initialData: [],
+  });
+
+  const { data: user } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => base44.auth.me(),
+  });
+
+  const isLoading = loadingTransactions || loadingRecurring || loadingConnections;
+
+  const handleRefreshData = () => {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['bank-connections'] });
+  };
 
   const monthOptions = useMemo(() => {
     const options = [];
