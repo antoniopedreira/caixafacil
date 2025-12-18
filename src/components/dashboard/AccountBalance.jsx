@@ -13,7 +13,7 @@ import { subMonths, startOfMonth, isBefore, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 
 // Função para formatar valor com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
