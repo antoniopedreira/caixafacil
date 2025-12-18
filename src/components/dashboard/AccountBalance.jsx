@@ -8,10 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, EyeOff, TrendingUp, TrendingDown, HelpCircle, RefreshCw, Loader2 } from "lucide-react";
+import { Eye, EyeOff, TrendingUp, TrendingDown, HelpCircle, RefreshCw, Loader2, Building2 } from "lucide-react";
 import { subMonths, startOfMonth, isBefore, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useToast } from "@/components/ui/use-toast";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { toast } from "react-hot-toast";
 
 // Função para formatar valor com ponto para milhares e vírgula para decimal
 const formatCurrency = (value) => {
@@ -25,7 +27,6 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
-  const { toast } = useToast();
 
   const handleRefreshData = async () => {
     // Pega o primeiro itemId disponível das conexões
@@ -33,11 +34,7 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
     const itemId = connection?.pluggy_item_id;
 
     if (!itemId) {
-      toast({
-        title: "Nenhuma conta conectada",
-        description: "Conecte uma conta bancária primeiro.",
-        variant: "destructive"
-      });
+      toast.error("Conecte uma conta bancária primeiro.");
       return;
     }
 
@@ -60,10 +57,7 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
         throw new Error('Falha na sincronização');
       }
 
-      toast({
-        title: "Dados atualizados com sucesso!",
-        description: "Suas transações foram sincronizadas.",
-      });
+      toast.success("Dados atualizados com sucesso!");
 
       // Recarrega os dados da tela
       if (onRefreshData) {
@@ -72,11 +66,7 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
 
     } catch (error) {
       console.error('Erro ao atualizar:', error);
-      toast({
-        title: "Erro ao atualizar",
-        description: error.message || "Tente novamente mais tarde.",
-        variant: "destructive"
-      });
+      toast.error(error.message || "Erro ao atualizar. Tente novamente.");
     } finally {
       setIsRefreshing(false);
       
@@ -141,6 +131,8 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
     setInfoDialogOpen(true);
   };
 
+  const hasBankConnections = bankConnections && bankConnections.length > 0;
+
   return (
     <>
       <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-xl text-white">
@@ -150,25 +142,38 @@ export default function AccountBalance({ balance, selectedAccount, onAccountChan
               <span className="text-emerald-100 text-xs font-medium">Saldo bancário</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button
-                onClick={handleRefreshData}
-                disabled={isRefreshing || isDisabled}
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-white hover:bg-emerald-400/30 text-xs gap-1"
-              >
-                {isRefreshing ? (
-                  <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Atualizando...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-3 h-3" />
-                    Atualizar
-                  </>
-                )}
-              </Button>
+              {hasBankConnections ? (
+                <Button
+                  onClick={handleRefreshData}
+                  disabled={isRefreshing || isDisabled}
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-white hover:bg-emerald-400/30 text-xs gap-1"
+                >
+                  {isRefreshing ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Atualizando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-3 h-3" />
+                      Atualizar
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Link to={createPageUrl("BankConnectionsNew")}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-white hover:bg-emerald-400/30 text-xs gap-1"
+                  >
+                    <Building2 className="w-3 h-3" />
+                    Conectar Banco
+                  </Button>
+                </Link>
+              )}
               <button
                 onClick={onToggleBalance}
                 className="p-1 hover:bg-emerald-400/30 rounded-lg transition-colors"
