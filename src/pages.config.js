@@ -1,29 +1,31 @@
-import Dashboard from './pages/Dashboard';
-import Transactions from './pages/Transactions';
-import UploadStatement from './pages/UploadStatement';
-import Reports from './pages/Reports';
-import Content from './pages/Content';
-import BankConnections from './pages/BankConnections';
 import AIAssistant from './pages/AIAssistant';
-import RecurringExpenses from './pages/RecurringExpenses';
+import BankConnections from './pages/BankConnections';
+import BankConnectionsNew from './pages/BankConnectionsNew';
+import Content from './pages/Content';
+import Dashboard from './pages/Dashboard';
+import Home from './pages/Home';
 import ManageBankAccounts from './pages/ManageBankAccounts';
 import NotificationSettings from './pages/NotificationSettings';
-import BankConnectionsNew from './pages/BankConnectionsNew';
+import RecurringExpenses from './pages/RecurringExpenses';
+import Reports from './pages/Reports';
+import Transactions from './pages/Transactions';
+import UploadStatement from './pages/UploadStatement';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Transactions": Transactions,
-    "UploadStatement": UploadStatement,
-    "Reports": Reports,
-    "Content": Content,
-    "BankConnections": BankConnections,
     "AIAssistant": AIAssistant,
-    "RecurringExpenses": RecurringExpenses,
+    "BankConnections": BankConnections,
+    "BankConnectionsNew": BankConnectionsNew,
+    "Content": Content,
+    "Dashboard": Dashboard,
+    "Home": Home,
     "ManageBankAccounts": ManageBankAccounts,
     "NotificationSettings": NotificationSettings,
-    "BankConnectionsNew": BankConnectionsNew,
+    "RecurringExpenses": RecurringExpenses,
+    "Reports": Reports,
+    "Transactions": Transactions,
+    "UploadStatement": UploadStatement,
 }
 
 export const pagesConfig = {

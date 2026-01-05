@@ -265,7 +265,7 @@ function InfoIcon({ explanationType }) {
   );
 }
 
-export default function MonthSummaryCards({ 
+function MonthSummaryCards({ 
   income, 
   expense, 
   balance, 
@@ -397,3 +397,5 @@ export default function MonthSummaryCards({
     </Card>
   );
 }
+
+export default React.memo(MonthSummaryCards);

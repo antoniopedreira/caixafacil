@@ -83,7 +83,7 @@ const getCategoryIcon = (category, type) => {
   );
 };
 
-export default function RecentTransactions({ transactions }) {
+function RecentTransactions({ transactions }) {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const recentTransactions = transactions.slice(0, 5);
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -110,7 +109,7 @@ const generateAnalysis = (data) => {
   };
 };
 
-export default function MonthlyAnalysisTable({ transactions }) {
+function MonthlyAnalysisTable({ transactions }) {
   const [showMonths, setShowMonths] = useState(6);
   const [displayMode, setDisplayMode] = useState('normal');
   const [expandedRow, setExpandedRow] = useState(null);
@@ -722,3 +721,5 @@ export default function MonthlyAnalysisTable({ transactions }) {
     </div>
   );
 }
+
+export default React.memo(MonthlyAnalysisTable);

@@ -88,7 +88,7 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-export default function ExpandedTransactionList({ transactions, type, onClose, allTransactions }) {
+function ExpandedTransactionList({ transactions, type, onClose, allTransactions }) {
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [expandedPayee, setExpandedPayee] = useState(null);
   const [selectedTransaction, setSelectedTransaction] = useState(null);

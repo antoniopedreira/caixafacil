@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -84,7 +83,7 @@ const CustomDot = (props) => {
   );
 };
 
-export default function CashBalanceEvolution({ transactions }) {
+function CashBalanceEvolution({ transactions }) {
   const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [showTrendDialog, setShowTrendDialog] = useState(false);
 
@@ -459,3 +458,5 @@ export default function CashBalanceEvolution({ transactions }) {
     </>
   );
 }
+
+export default React.memo(CashBalanceEvolution);

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, lazy, Suspense } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,11 +16,10 @@ import AccountBalance from "../components/dashboard/AccountBalance";
 import MonthSummaryCards from "../components/dashboard/MonthSummaryCards";
 import RecentTransactions from "../components/dashboard/RecentTransactions";
 import ExpandedTransactionList from "../components/dashboard/ExpandedTransactionList";
-import SpendingTrends from "../components/dashboard/SpendingTrends";
-import TopCategories from "../components/dashboard/TopCategories";
-import FinancialProjection from "../components/dashboard/FinancialProjection";
-import MonthlyAnalysisTable from "../components/dashboard/MonthlyAnalysisTable";
 import CashBalanceEvolution from "../components/dashboard/CashBalanceEvolution";
+
+// Lazy load componentes pesados
+const MonthlyAnalysisTable = lazy(() => import("../components/dashboard/MonthlyAnalysisTable"));
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -390,7 +389,13 @@ export default function Dashboard() {
               </AlertDescription>
             </Alert>
           ) : (
-            <MonthlyAnalysisTable transactions={transactions} />
+            <Suspense fallback={
+              <div className="space-y-3">
+                <Skeleton className="h-96 w-full" />
+              </div>
+            }>
+              <MonthlyAnalysisTable transactions={transactions} />
+            </Suspense>
           )}
         </TabsContent>
       </Tabs>
