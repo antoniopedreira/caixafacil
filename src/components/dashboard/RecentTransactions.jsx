@@ -151,3 +151,5 @@ function RecentTransactions({ transactions }) {
     </>
   );
 }
+
+export default React.memo(RecentTransactions);

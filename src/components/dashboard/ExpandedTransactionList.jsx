@@ -282,3 +282,5 @@ function ExpandedTransactionList({ transactions, type, onClose, allTransactions 
     </>
   );
 }
+
+export default React.memo(ExpandedTransactionList);
