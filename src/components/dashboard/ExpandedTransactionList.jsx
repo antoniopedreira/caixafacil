@@ -283,4 +283,5 @@ function ExpandedTransactionList({ transactions, type, onClose, allTransactions 
   );
 }
 
+// Memoized for performance
 export default React.memo(ExpandedTransactionList);
